@@ -10,6 +10,11 @@
             "includePath": [
                 "d:/Perso/Divers/Incubateur/Incubator-Controller/include",
                 "d:/Perso/Divers/Incubateur/Incubator-Controller/src",
+                "d:/Perso/Divers/Incubateur/Incubator-Controller/lib/Display",
+                "d:/Perso/Divers/Incubateur/Incubator-Controller/lib/General",
+                "d:/Perso/Divers/Incubateur/Incubator-Controller/.pio/libdeps/ESP32-S3-Relay-6CH/Adafruit SHT31 Library",
+                "d:/Perso/Divers/Incubateur/Incubator-Controller/.pio/libdeps/ESP32-S3-Relay-6CH/Adafruit BusIO",
+                "C:/Users/Perso/.platformio/packages/framework-arduinoespressif32@3.20014.231204/libraries/Wire/src",
                 "d:/Perso/Divers/Incubateur/Incubator-Controller/.pio/libdeps/ESP32-S3-Relay-6CH/DHT sensor library",
                 "d:/Perso/Divers/Incubateur/Incubator-Controller/.pio/libdeps/ESP32-S3-Relay-6CH/Adafruit Unified Sensor",
                 "d:/Perso/Divers/Incubateur/Incubator-Controller/.pio/libdeps/ESP32-S3-Relay-6CH/TFT_eSPI",
@@ -238,7 +243,6 @@
                 "C:/Users/Perso/.platformio/packages/framework-arduinoespressif32@3.20014.231204/libraries/WiFi/src",
                 "C:/Users/Perso/.platformio/packages/framework-arduinoespressif32@3.20014.231204/libraries/WiFiClientSecure/src",
                 "C:/Users/Perso/.platformio/packages/framework-arduinoespressif32@3.20014.231204/libraries/WiFiProv/src",
-                "C:/Users/Perso/.platformio/packages/framework-arduinoespressif32@3.20014.231204/libraries/Wire/src",
                 ""
             ],
             "browse": {
@@ -246,6 +250,11 @@
                 "path": [
                     "d:/Perso/Divers/Incubateur/Incubator-Controller/include",
                     "d:/Perso/Divers/Incubateur/Incubator-Controller/src",
+                    "d:/Perso/Divers/Incubateur/Incubator-Controller/lib/Display",
+                    "d:/Perso/Divers/Incubateur/Incubator-Controller/lib/General",
+                    "d:/Perso/Divers/Incubateur/Incubator-Controller/.pio/libdeps/ESP32-S3-Relay-6CH/Adafruit SHT31 Library",
+                    "d:/Perso/Divers/Incubateur/Incubator-Controller/.pio/libdeps/ESP32-S3-Relay-6CH/Adafruit BusIO",
+                    "C:/Users/Perso/.platformio/packages/framework-arduinoespressif32@3.20014.231204/libraries/Wire/src",
                     "d:/Perso/Divers/Incubateur/Incubator-Controller/.pio/libdeps/ESP32-S3-Relay-6CH/DHT sensor library",
                     "d:/Perso/Divers/Incubateur/Incubator-Controller/.pio/libdeps/ESP32-S3-Relay-6CH/Adafruit Unified Sensor",
                     "d:/Perso/Divers/Incubateur/Incubator-Controller/.pio/libdeps/ESP32-S3-Relay-6CH/TFT_eSPI",
@@ -474,7 +483,6 @@
                     "C:/Users/Perso/.platformio/packages/framework-arduinoespressif32@3.20014.231204/libraries/WiFi/src",
                     "C:/Users/Perso/.platformio/packages/framework-arduinoespressif32@3.20014.231204/libraries/WiFiClientSecure/src",
                     "C:/Users/Perso/.platformio/packages/framework-arduinoespressif32@3.20014.231204/libraries/WiFiProv/src",
-                    "C:/Users/Perso/.platformio/packages/framework-arduinoespressif32@3.20014.231204/libraries/Wire/src",
                     ""
                 ]
             },

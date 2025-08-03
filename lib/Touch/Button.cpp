@@ -1,0 +1,244 @@
+#include "Button.h"
+
+extern TFT_eSPI tft;
+int TempState; //Vraiment pas élégant.. mais je ne sais pas comment faire autrement.
+
+ButtonWidget btTup  = ButtonWidget(&tft);
+ButtonWidget btTdown  = ButtonWidget(&tft);
+ButtonWidget btHup  = ButtonWidget(&tft);
+ButtonWidget btHdown = ButtonWidget(&tft);
+ButtonWidget btTiltup = ButtonWidget(&tft);
+ButtonWidget btTiltdown = ButtonWidget(&tft);
+ButtonWidget btAlarm  = ButtonWidget(&tft);
+
+
+    void btTup_pressAction(void);
+    void btTup_releaseAction(void);
+    void btTdown_pressAction(void);
+    void btTdown_releaseAction(void);
+    void btHup_pressAction(void);
+    void btHup_releaseAction(void);
+    void btHdown_pressAction(void);
+    void btHdown_releaseAction(void);
+    void btTiltup_pressAction(void);
+    void btTiltup_releaseAction(void);
+    void btTiltdown_pressAction(void);
+    void btTiltdown_releaseAction(void);
+    void btAlarm_pressAction(void);
+    void btAlarm_releaseAction(void);
+
+
+// Create an array of button instances to use in for() loops
+// This is more useful where large numbers of buttons are employed
+ButtonWidget* btn[] = {&btTup , &btTdown, &btHup, &btHdown, &btTiltup, &btTiltdown, &btAlarm};
+uint8_t buttonCount = sizeof(btn) / sizeof(btn[0]);
+
+int MainScreenButton(bool pressed,u_int16_t x,u_int16_t y)
+{
+  tft.setFreeFont(FF17);
+  tft.setTextSize(1);
+  tft.setTextPadding(9*4);
+  tft.setTextDatum(TR_DATUM);
+
+  TempState = 1;
+  static uint32_t scanTime = millis();
+
+  // Scan keys every 50ms at most
+  if (millis() - scanTime >= 50) {
+    scanTime = millis();
+    for (uint8_t b = 0; b < buttonCount; b++) {
+      if (pressed) {
+        if (btn[b]->contains(x, y)) {
+          btn[b]->press(true);
+          btn[b]->pressAction();
+        }
+      }
+      else {
+        btn[b]->press(false);
+        btn[b]->releaseAction();
+      }
+    }
+  }
+return TempState;
+}
+
+
+
+void btTup_pressAction(void)
+{
+  if (btTup.justPressed()) {
+    //Serial.println("Left button just pressed");
+    btTup.drawSmoothButton(true);
+  }
+}
+
+void btTup_releaseAction(void)
+{
+  if (btTup.justReleased()) {
+    //Serial.println("Left button just released");
+    btTup.drawSmoothButton(false);
+    TempState = 2; //Game of life   //Vraiment pas élégant.. mais je ne sais pas comment faire autrement.
+  }
+  
+}
+
+void btTdown_pressAction(void)
+{
+  if (btTdown.justPressed()) {
+    //Serial.println("Left button just pressed");
+    btTdown.drawSmoothButton(true);
+  }
+}
+
+void btTdown_releaseAction(void)
+{
+  if (btTdown.justReleased()) {
+    //Serial.println("Pesée");
+    btTdown.drawSmoothButton(false);
+    TempState = 3; //Pesée normal
+  }
+}
+
+void btHup_pressAction(void)
+{
+  if (btHup.justPressed()) {
+    btHup.drawSmoothButton(true);
+  }
+}
+
+void btHup_releaseAction(void)
+{
+  if (btHup.justReleased()) {
+    //Serial.println("Qualib");
+    btHup.drawSmoothButton(false);
+    TempState = 4; //Scale Screen
+  }
+}
+
+void btHdown_pressAction(void)
+{
+  if (btHdown.justPressed()) {
+    btHdown.drawSmoothButton(true);
+  }
+}
+
+void btHdown_releaseAction(void)
+{
+  if (btHdown.justReleased()) {
+    //Serial.println("Qualib");
+    btHdown.drawSmoothButton(false);
+    TempState = 10; //Init Poule
+  }
+}
+
+
+void btTiltup_pressAction(void)
+{
+  if (btTiltup.justPressed()) {
+    btTiltup.drawSmoothButton(true);
+    Serial.println("info was pressed");
+  }
+}
+
+void btTiltup_releaseAction(void)
+{
+  if (btTiltup.justReleased()) {
+    //Serial.println("Qualib");
+    btTiltup.drawSmoothButton(false);
+    TempState = 6; //Display informations about version of software
+  }
+}
+
+void btTiltdown_pressAction(void)
+{
+  if (btTiltdown.justPressed()) {
+    btTiltdown.drawSmoothButton(true);
+  }
+}
+
+void btTiltdown_releaseAction(void)
+{
+  if (btTiltdown.justReleased()) {
+    //Serial.println("Qualib");
+    btTiltdown.drawSmoothButton(false);
+    TempState = 8; //Display informations about version of software
+  }
+}
+
+void btAlarm_pressAction(void)
+{
+  if (btAlarm.justPressed()) {
+    btAlarm.drawSmoothButton(true);
+  }
+}
+
+void btAlarm_releaseAction(void)
+{
+  if (btAlarm.justReleased()) {
+    btAlarm.drawSmoothButton(false);
+    Serial.println("Tare");
+    TempState = 1; //on tare
+  }
+}
+
+
+void initButtons() {
+  //For the button
+  tft.setFreeFont(FF17);
+  tft.setTextSize(1);
+  tft.setTextPadding(9*4);
+  tft.setTextDatum(TR_DATUM);
+  // Calibrate the touch screen and retrieve the scaling factors
+  //touch_calibrate();
+
+  uint16_t y = 220;
+
+  uint16_t x = 190;
+  btTup.initButtonUL(x, y, BUTTON_W, BUTTON_H, TFT_WHITE, TFT_PINK, TFT_BLACK, const_cast<char *>("T Up"), 1);
+  btTup.setPressAction(btTup_pressAction);
+  btTup.setReleaseAction(btTup_releaseAction);
+  btTup.drawSmoothButton(false, 3, TFT_BLACK); // 3 is outline width, TFT_BLACK is the surrounding background colour for anti-aliasing
+
+  x = 260;
+  btHup.initButtonUL(x, y, BUTTON_W, BUTTON_H, TFT_WHITE, TFT_PINK, TFT_BLACK, const_cast<char *>("H up."), 1);
+  btHup.setPressAction(btHup_pressAction);
+  btHup.setReleaseAction(btHup_releaseAction);
+  btHup.drawSmoothButton(false, 3, TFT_BLACK); // 3 is outline width, TFT_BLACK is the surrounding background colour for anti-aliasing
+
+  x = 330;
+  btTiltup.initButtonUL(x, y, BUTTON_W, BUTTON_H, TFT_WHITE, TFT_PINK, TFT_BLACK, const_cast<char *>("Ti Up"), 1);
+  btTiltup.setPressAction(btTiltup_pressAction);
+  btTiltup.setReleaseAction(btTiltup_releaseAction);
+  btTiltup.drawSmoothButton(false, 3, TFT_BLACK); // 3 is outline width, TFT_BLACK is the surrounding background colour for anti-aliasing
+
+
+  y = 270;
+  
+  x = 190;
+  btTdown.initButtonUL(x, y, BUTTON_W, BUTTON_H, TFT_WHITE, TFT_CYAN, TFT_BLACK, const_cast<char *>("T down"), 1);
+  btTdown.setPressAction(btTdown_pressAction);
+  btTdown.setReleaseAction(btTdown_releaseAction);
+  btTdown.drawSmoothButton(false, 3, TFT_BLACK); // 3 is outline width, TFT_BLACK is the surrounding background colour for anti-aliasing
+
+  x = 260;
+  btHdown.initButtonUL(x, y, BUTTON_W, BUTTON_H, TFT_WHITE, TFT_CYAN, TFT_BLACK, const_cast<char *>("H down"), 1);
+  btHdown.setPressAction(btHdown_pressAction);
+  btHdown.setReleaseAction(btHdown_releaseAction);
+  btHdown.drawSmoothButton(false, 3, TFT_BLACK); // 3 is outline width, TFT_BLACK is the surrounding background colour for anti-aliasing
+
+  x = 330;
+  btTiltdown.initButtonUL(x, y, BUTTON_W, BUTTON_H, TFT_WHITE, TFT_CYAN, TFT_BLACK, const_cast<char *>("Ti Down"), 1);
+  btTiltdown.setPressAction(btTiltdown_pressAction);
+  btTiltdown.setReleaseAction(btTiltdown_releaseAction);
+  btTiltdown.drawSmoothButton(false, 3, TFT_BLACK); // 3 is outline width, TFT_BLACK is the surrounding background colour for anti-aliasing
+
+  
+  x = 400;
+  btAlarm.initButtonUL(x, y, BUTTON_W, BUTTON_H, TFT_WHITE, TFT_YELLOW, TFT_BLACK, const_cast<char *>("Alarm"), 1);
+  btAlarm.setPressAction(btAlarm_pressAction);
+  btAlarm.setReleaseAction(btAlarm_releaseAction);
+  btAlarm.drawSmoothButton(false, 3, TFT_BLACK); // 3 is outline width, TFT_BLACK is the surrounding background colour for anti-aliasing
+
+}
+
+

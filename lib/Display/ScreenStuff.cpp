@@ -1,5 +1,5 @@
+#include <ScreenStuff.h>
 #include <TFT_eSPI.h> // Hardware-specific library
-#include <Config.h>
 extern TFT_eSPI tft;
 
 void Draw_screen_background()
@@ -12,7 +12,6 @@ void Draw_screen_background()
   tft.setTextSize(1);
   tft.setTextFont(2);
   tft.setTextDatum(BL_DATUM);
-  //tft.setTextPadding(6*20);
 
 
   tft.drawString("Temperature Setpoint:", 10,190);
@@ -33,6 +32,10 @@ void Draw_screen_background()
 
 void Draw_data(float Tset, float Hset, float Hnow, float Troom, float Hroom, int TBT, int uptime, float Ttop, float Tmid, float Tlow)
 {
+  tft.setTextSize(1);
+  tft.setTextFont(1);
+  tft.setTextPadding(6*2);
+  tft.setTextDatum(BL_DATUM);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
 
   tft.drawFloat(Tset,1,150,190,2);
@@ -41,12 +44,12 @@ void Draw_data(float Tset, float Hset, float Hnow, float Troom, float Hroom, int
   tft.drawFloat(Hset,1,150,210,2);
   tft.drawString("%", 183, 210, 2); 
 
-  tft.setTextColor(TFT_DARKGREEN, TFT_BLACK);
-  tft.drawFloat((Ttop+Tmid+Tlow)/3,1,230,190,2);
-  tft.drawString("°C", 263, 190, 2);
+  tft.setTextColor(TFT_BLUE, TFT_BLACK);
+  tft.drawFloat((Ttop+Tmid+Tlow)/3,1,230,190,3);
+  tft.drawString("°C", 263, 190, 3);
+  tft.drawFloat(Hnow,1,230,210,3);
+  tft.drawString("%", 263, 210, 3); 
 
-  tft.drawFloat(Hnow,1,230,210,2);
-  tft.drawString("%", 263, 210, 2); 
 
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.drawFloat(Troom,1,95,270);
@@ -57,9 +60,6 @@ void Draw_data(float Tset, float Hset, float Hnow, float Troom, float Hroom, int
 
   tft.drawNumber(TBT,95,290);
   tft.drawString("min", 125, 290); 
-
-  tft.drawNumber(uptime,95,300);
-  tft.drawString("???", 125, 300); 
 
   tft.setTextColor(TFT_RED, TFT_BLACK);
   tft.drawFloat(Ttop,2,390,40,4);
@@ -124,12 +124,65 @@ void Add_Value_Table(int TempTable[][TABLE_HEIGHT],float tempHigh, float tempMid
 
 }
 
+void Display_UpTime(unsigned long currentMillis)
+{
+    unsigned long totalSeconds = currentMillis / 1000;
+    unsigned long days = totalSeconds / 86400; // Seconds in a day
+    unsigned long hours = totalSeconds / 3600;
+    unsigned long minutes = ((totalSeconds /60)%60); 
+    unsigned long seconds = totalSeconds % 60; 
+
+    tft.setTextSize(1);
+    tft.setTextFont(1);
+    tft.setTextPadding(6*2);
+    tft.setTextDatum(BL_DATUM);
+
+    tft.drawString("  d", 95, 300);
+    tft.drawString("  h", 119, 300); 
+    tft.drawString("  m", 143, 300); 
+    tft.drawString("  s", 167, 300); 
+    tft.drawNumber(days,95,300);
+    tft.drawNumber(hours,119,300);
+    tft.drawNumber(minutes,143,300);
+    tft.drawNumber(seconds,167,300);
+
+
+    Serial.print("Days: ");
+    Serial.print(days);
+    Serial.print(", Hours: ");
+    Serial.print(hours);
+    Serial.print(", Minutes: ");
+    Serial.print(minutes);
+    Serial.print(", Seconds: ");
+    Serial.println(seconds);
+}
+
+
+void Display_Refresh(unsigned long RefreshTime)
+{
+    tft.setTextSize(1);
+    tft.setTextFont(1);
+    tft.setTextPadding(6*2);
+    tft.setTextDatum(BL_DATUM);
+
+    Serial.print(RefreshTime);
+    Serial.println("ms");
+    tft.drawString("    ms", 95, 310); 
+    tft.drawNumber(RefreshTime,95,310);
+    
+}
+  
+
+
+
 
 void Draw_Table(int TempTable[][TABLE_HEIGHT])
 {
     // Function to draw the temperature table on the TFT display
     // Assuming TempTable is a 2D array of size TABLE_WIDTH by TABLE_HEIGHT
     for (int i = 0; i < TABLE_WIDTH-3; i++) {
+        tft.drawLine(i+1,1,i+1,TABLE_HEIGHT-3,TFT_BLACK);//on efface la ligne d'un coup
+
         for (int j = 0; j < TABLE_HEIGHT-3; j++) {
             if(TempTable[i][j] == 1)
             {
@@ -142,10 +195,6 @@ void Draw_Table(int TempTable[][TABLE_HEIGHT])
             else if(TempTable[i][j] == 3)
             {
                 tft.drawPixel(i+1,j+1,TFT_BLUE);
-            }
-            else
-            {
-                 tft.drawPixel(i+1,j+1,TFT_BLACK);   
             }
         
         }

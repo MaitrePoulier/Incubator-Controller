@@ -1,6 +1,7 @@
 #include <ScreenStuff.h>
 #include <TFT_eSPI.h> // Hardware-specific library
 extern TFT_eSPI tft;
+extern TFT_eSprite TempTable_Spr;
 
 void Draw_screen_background()
 {
@@ -30,7 +31,7 @@ void Draw_screen_background()
   tft.drawRect(0,0,TABLE_WIDTH-1,TABLE_HEIGHT-1,TFT_WHITE);
 }
 
-void Draw_data(float Tset, float Hset, float Hnow, float Troom, float Hroom, int TBT, int uptime, float Ttop, float Tmid, float Tlow)
+void Draw_data(float Tset, float Hset, float Troom, float Hroom, int TBT, int uptime, float Hnow, float Ttop, float Tmid, float Tlow)
 {
   tft.setTextSize(1);
   tft.setTextFont(1);
@@ -45,10 +46,10 @@ void Draw_data(float Tset, float Hset, float Hnow, float Troom, float Hroom, int
   tft.drawString("%", 183, 210, 2); 
 
   tft.setTextColor(TFT_BLUE, TFT_BLACK);
-  tft.drawFloat((Ttop+Tmid+Tlow)/3,1,230,190,3);
-  tft.drawString("°C", 263, 190, 3);
-  tft.drawFloat(Hnow,1,230,210,3);
-  tft.drawString("%", 263, 210, 3); 
+  tft.drawFloat((Ttop+Tmid+Tlow)/3,1,230,190,2);
+  tft.drawString("°C", 263, 190, 2);
+  tft.drawFloat(Hnow,1,230,210,2);
+  tft.drawString("%", 263, 210, 2); 
 
 
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
@@ -75,7 +76,7 @@ void Draw_data(float Tset, float Hset, float Hnow, float Troom, float Hroom, int
 }
 
 
-void Init_Table(int TempTable[][TABLE_HEIGHT])
+void Init_Table(uint16_t TempTable[][TABLE_HEIGHT])
 {
   //initialise the tableau to '0'
   //We loose 2 pixel for the white rectangle around the graph
@@ -88,9 +89,10 @@ void Init_Table(int TempTable[][TABLE_HEIGHT])
   }
 }
 
-void Add_Value_Table(int TempTable[][TABLE_HEIGHT],float tempHigh, float tempMid, float tempLow)
+void Add_Value_Table(uint16_t TempTable[][TABLE_HEIGHT],float tempHigh, float tempMid, float tempLow)
 {
     int position;
+
     //We displace all the data inside TempTable by one position to de right
     for (int i = TABLE_WIDTH-4; i >= 0 ; i--) {
         for (int j = 0; j < TABLE_HEIGHT-2; j++) 
@@ -104,18 +106,25 @@ void Add_Value_Table(int TempTable[][TABLE_HEIGHT],float tempHigh, float tempMid
             TempTable[0][j] = 0;
         }
     
-    
+   
     position = (int)((tempHigh - MIN_VALUE) / RESOLUTION);
+
+    //We assure that we do not go out of the table
+    if (position <= 0 || position >= TABLE_HEIGHT) position = 0;
     //puis on inverse pour que le point 0,0 soit en haut à droite
     position = -position + TABLE_HEIGHT-2;
     TempTable[0][position] = 1;
 
     position = (int)((tempMid - MIN_VALUE) / RESOLUTION);
+    //We assure that we do not go out of the table
+    if (position <= 0 || position >= TABLE_HEIGHT) position = 0;
     //puis on inverse pour que le point 0,0 soit en haut à droite
     position = -position + TABLE_HEIGHT-2;
     TempTable[0][position] = 2;
 
     position = (int)((tempLow - MIN_VALUE) / RESOLUTION);
+    //We assure that we do not go out of the table
+    if (position <= 0 || position >= TABLE_HEIGHT) position = 0;
     //puis on inverse pour que le point 0,0 soit en haut à droite
     position = -position + TABLE_HEIGHT-2;
     TempTable[0][position] = 3;
@@ -176,25 +185,27 @@ void Display_Refresh(unsigned long RefreshTime)
 
 
 
-void Draw_Table(int TempTable[][TABLE_HEIGHT])
+void Draw_Table(uint16_t TempTable[][TABLE_HEIGHT])
 {
     // Function to draw the temperature table on the TFT display
     // Assuming TempTable is a 2D array of size TABLE_WIDTH by TABLE_HEIGHT
+
+    //We use the sprite and not directly the tft to save SPI communication
     for (int i = 0; i < TABLE_WIDTH-3; i++) {
-        tft.drawLine(i+1,1,i+1,TABLE_HEIGHT-3,TFT_BLACK);//on efface la ligne d'un coup
+        TempTable_Spr.drawLine(i+1,1,i+1,TABLE_HEIGHT-3,TFT_BLACK);//on efface la ligne d'un coup
 
         for (int j = 0; j < TABLE_HEIGHT-3; j++) {
             if(TempTable[i][j] == 1)
             {
-                tft.drawPixel(i+1,j+1,TFT_RED);
+                TempTable_Spr.drawPixel(i+1,j+1,TFT_RED);
             }
             else if(TempTable[i][j] == 2)
             {
-                tft.drawPixel(i+1,j+1,TFT_GREEN);
+                TempTable_Spr.drawPixel(i+1,j+1,TFT_GREEN);
             }
             else if(TempTable[i][j] == 3)
             {
-                tft.drawPixel(i+1,j+1,TFT_BLUE);
+                TempTable_Spr.drawPixel(i+1,j+1,TFT_BLUE);
             }
         
         }

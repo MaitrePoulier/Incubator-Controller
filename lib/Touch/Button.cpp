@@ -40,7 +40,7 @@ int MainScreenButton(bool pressed,u_int16_t x,u_int16_t y)
   tft.setTextPadding(9*4);
   tft.setTextDatum(TR_DATUM);
 
-  TempState = 1;
+  TempState = 0;
   static uint32_t scanTime = millis();
 
   // Scan keys every 50ms at most
@@ -69,6 +69,7 @@ void btTup_pressAction(void)
   if (btTup.justPressed()) {
     //Serial.println("Left button just pressed");
     btTup.drawSmoothButton(true);
+    TempState = 1; //temp +0.1oC
   }
 }
 
@@ -77,7 +78,6 @@ void btTup_releaseAction(void)
   if (btTup.justReleased()) {
     //Serial.println("Left button just released");
     btTup.drawSmoothButton(false);
-    TempState = 2; //Game of life   //Vraiment pas élégant.. mais je ne sais pas comment faire autrement.
   }
   
 }
@@ -87,6 +87,7 @@ void btTdown_pressAction(void)
   if (btTdown.justPressed()) {
     //Serial.println("Left button just pressed");
     btTdown.drawSmoothButton(true);
+    TempState = 2; //temp -0.1oC
   }
 }
 
@@ -95,7 +96,6 @@ void btTdown_releaseAction(void)
   if (btTdown.justReleased()) {
     //Serial.println("Pesée");
     btTdown.drawSmoothButton(false);
-    TempState = 3; //Pesée normal
   }
 }
 
@@ -104,6 +104,7 @@ void btHup_pressAction(void)
   if (btHup.justPressed()) {
     btHup.drawSmoothButton(true);
   }
+  TempState = 3; //Humidity +0.1%
 }
 
 void btHup_releaseAction(void)
@@ -111,7 +112,6 @@ void btHup_releaseAction(void)
   if (btHup.justReleased()) {
     //Serial.println("Qualib");
     btHup.drawSmoothButton(false);
-    TempState = 4; //Scale Screen
   }
 }
 
@@ -119,6 +119,7 @@ void btHdown_pressAction(void)
 {
   if (btHdown.justPressed()) {
     btHdown.drawSmoothButton(true);
+    TempState = 4; //Humidity -0.1%
   }
 }
 
@@ -127,7 +128,6 @@ void btHdown_releaseAction(void)
   if (btHdown.justReleased()) {
     //Serial.println("Qualib");
     btHdown.drawSmoothButton(false);
-    TempState = 10; //Init Poule
   }
 }
 
@@ -136,7 +136,7 @@ void btTiltup_pressAction(void)
 {
   if (btTiltup.justPressed()) {
     btTiltup.drawSmoothButton(true);
-    Serial.println("info was pressed");
+    TempState = 5; //Tilt UP until release
   }
 }
 
@@ -145,7 +145,7 @@ void btTiltup_releaseAction(void)
   if (btTiltup.justReleased()) {
     //Serial.println("Qualib");
     btTiltup.drawSmoothButton(false);
-    TempState = 6; //Display informations about version of software
+    TempState = 6; //Stop Tilt
   }
 }
 
@@ -153,6 +153,7 @@ void btTiltdown_pressAction(void)
 {
   if (btTiltdown.justPressed()) {
     btTiltdown.drawSmoothButton(true);
+    TempState = 7; //Tilt Down until release
   }
 }
 
@@ -161,7 +162,7 @@ void btTiltdown_releaseAction(void)
   if (btTiltdown.justReleased()) {
     //Serial.println("Qualib");
     btTiltdown.drawSmoothButton(false);
-    TempState = 8; //Display informations about version of software
+    TempState = 6; //Stop Tilt
   }
 }
 
@@ -176,8 +177,6 @@ void btAlarm_releaseAction(void)
 {
   if (btAlarm.justReleased()) {
     btAlarm.drawSmoothButton(false);
-    Serial.println("Tare");
-    TempState = 1; //on tare
   }
 }
 

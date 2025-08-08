@@ -13,6 +13,15 @@
 #include <Wire.h>
 #include "Adafruit_SHT31.h"
 
+//For the PID
+#include <PID_v2.h>
+// Specify the links and initial tuning parameters
+double Kp = 1, Ki = 0.1, Kd = 0.25;
+PID_v2 myPID(Kp, Ki, Kd, PID::Direct);
+
+int   WindowSize  = 5000;
+unsigned long windowStartTime;
+
 
 #include <Adafruit_MAX31865.h>
 
@@ -28,15 +37,8 @@ bool  Relay_heat = false; // relay #1 for heater
 #define   RELAY6 46 
 
 
-// number of milis second the heater will be on
-// Timeloop is on time + off time
-int   heaterIntensity = 0;
-#define   Timeloop 10000
 unsigned long currentMillis;
 unsigned long previousMillis = 0;
-unsigned long PWMTime = 0;
-
-
 
 //#include "freertos/FreeRTOSConfig.h"
 //#include <Wire.h> //pour l'I2C
@@ -66,6 +68,8 @@ float rtd_1;
 //Touchscreen
 u_int16_t x,y;
 bool pressed;
+
+int count;
 
 void setup() {
   // Some boards work best if we also make a serial connection
@@ -105,6 +109,18 @@ void setup() {
   tft.setTextDatum(BL_DATUM);
 
   
+
+  //PID
+  windowStartTime = millis();
+
+  // tell the PID to range between 0 and the full window size
+  myPID.SetOutputLimits(180, WindowSize); //loop() take at least 180ms for now
+
+  // turn the PID on
+  myPID.Start(thermo1.temperature(RNOMINAL, RREF),  // input
+              0,                      // current output
+              setTemp);                   // setpoint
+  
 }
 
 void loop() {
@@ -141,55 +157,46 @@ void loop() {
 
   Draw_data(setTemp, setHumidity, t, 48.99, 120, 150, h, rtd_1+0.1, rtd_1, rtd_1-0.1);
   
+  count ++;
+  if (count > 9)
+  {
+    count = 0;
   //plot the tableau
   Add_Value_Table(TempTable,rtd_1+0.1, rtd_1, rtd_1-0.1);
   Draw_Table(TempTable);
   //We only save 20ms with the sprite method over writing directly on the screen... 
   //But it's better than nothing!!
   TempTable_Spr.pushSprite(1,1); //We offset to clear the whiteborder
-
+  }
+  
   //temperature asservissement
+  double output = myPID.Run(rtd_1);
 
-  if (rtd_1 < setTemp)
-  {
-    //Relay_heat = true;
-    heaterIntensity = (int)((setTemp - rtd_1)*1000 + 180);
+  /************************************************
+   * turn the output pin on/off based on pid output
+   ************************************************/
+  while (millis() - windowStartTime > WindowSize) {
+    // time to shift the Relay Window
+    windowStartTime += WindowSize;
   }
-  else
-  {
-    //Relay_heat = false;
-    heaterIntensity = 0;
-  }
-
-
-  
-  Serial.print("Heater Intensity: ");
-  Serial.println(heaterIntensity);
-
-  currentMillis = millis();
-  
-  //If it's more than Timeloop, we restart the timer to 0
-  if (currentMillis > (PWMTime + Timeloop))
-  {
-    PWMTime = currentMillis;
-  }
-
-  //If we are the start of the PWM delai we turn the heater on
-  //If it's been longer than the heaterIensity measurement (in ms) it's off
-  if ((currentMillis - PWMTime) <  heaterIntensity)
+  Serial.println(output);
+  Serial.println(millis());
+  Serial.println(windowStartTime);
+  if (output > millis() - windowStartTime && output > 180.5)
   {
     digitalWrite(RELAY1,HIGH);
     tft.setTextColor(TFT_RED, TFT_BLACK);
     tft.drawString("Heat On ", 390, 190,2);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
   }
-  else{
+  else
+  {
     digitalWrite(RELAY1,LOW);
     tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
     tft.drawString("Heat Off", 390, 190,2);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
   }
-  
+
   //End temperature asservissement
 
 
@@ -200,9 +207,11 @@ void loop() {
   switch (MainScreenButton(pressed,x,y)) {
     case 1:
       setTemp = setTemp + 0.1;
+      myPID.Setpoint(setTemp);
       break;
     case 2:
       setTemp = setTemp - 0.1;
+      myPID.Setpoint(setTemp);
       break;
     case 3:
       setHumidity = setHumidity + 0.1;

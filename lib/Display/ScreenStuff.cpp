@@ -59,8 +59,11 @@ void Draw_data(float Tset, float Hset, float Troom, float Hroom, int TBT, int up
   tft.drawFloat(Hroom,1,95,280);
   tft.drawString("%", 125, 280); 
 
+  tft.setTextPadding(6*3);
   tft.drawNumber(TBT,95,290);
+  tft.setTextPadding(6*2);
   tft.drawString("min", 125, 290); 
+ 
 
   tft.setTextColor(TFT_RED, TFT_BLACK);
   tft.drawFloat(Ttop,2,390,40,4);
@@ -209,5 +212,81 @@ void Draw_Table(uint16_t TempTable[][TABLE_HEIGHT])
             }
         
         }
+    }
+}
+
+  void Display_Heater(float output)
+  {
+
+    tft.setTextDatum(TL_DATUM);
+    if (output > MIN_PID_TIME_WIDTH + 0.01)
+    {
+        tft.setTextColor(TFT_RED, TFT_BLACK);
+        tft.drawFloat(output,3, 405, 160,2);
+        //tft.drawString("Heat On ", 390, 190,2);
+        tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    }
+    else
+    {
+        tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+        tft.drawString("Heat Off", 405, 160,2);
+        tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    }
+  }
+
+void Display_Humidifier(bool Humidifier)
+{
+    tft.setTextDatum(TL_DATUM);
+    if (Humidifier == true)
+    {
+    tft.setTextColor(TFT_RED, TFT_BLACK);
+    tft.drawString("Humidity On ", 405, 180,2);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    }
+    else
+    {
+    tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    tft.drawString("Humidity Off", 405, 180,2);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    }
+}
+
+void Display_Fan(bool Fan)
+{
+    tft.setTextDatum(TL_DATUM);
+    if (Fan == true)
+    {
+    tft.setTextColor(TFT_RED, TFT_BLACK);
+    tft.drawString("Fan On ", 405, 200,2);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    }
+    else
+    {
+    tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    tft.drawString("Fan Off", 405, 200,2);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    }
+}
+
+void Display_Tilt(int Tilt)
+{
+    tft.setTextDatum(TL_DATUM);
+    switch(Tilt)
+    {
+        case 0:
+            tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+            tft.drawString("Tilt Off  ", 405, 220,2);
+            tft.setTextColor(TFT_WHITE, TFT_BLACK);
+            break;
+        case 1:
+            tft.setTextColor(TFT_RED, TFT_BLACK);
+            tft.drawString("Tilt Up   ", 405, 220,2);
+            tft.setTextColor(TFT_WHITE, TFT_BLACK);
+            break;
+        case 2:
+            tft.setTextColor(TFT_RED, TFT_BLACK);
+            tft.drawString("Tilt Down", 405, 220,2);
+            tft.setTextColor(TFT_WHITE, TFT_BLACK);
+            break;
     }
 }

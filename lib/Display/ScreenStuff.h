@@ -13,5 +13,9 @@
   void Display_UpTime(unsigned long );
   void Display_Refresh(unsigned long);
   void Draw_Table(uint16_t TempTable[][TABLE_HEIGHT]);
+  void Display_Heater(float);
+  void Display_Humidifier(bool);
+  void Display_Fan(bool);
+  void Display_Tilt(int);
 
 #endif

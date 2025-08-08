@@ -104,7 +104,7 @@ void btHup_pressAction(void)
   if (btHup.justPressed()) {
     btHup.drawSmoothButton(true);
   }
-  TempState = 3; //Humidity +0.1%
+  TempState = 3; //Humidity +1%
 }
 
 void btHup_releaseAction(void)
@@ -119,8 +119,8 @@ void btHdown_pressAction(void)
 {
   if (btHdown.justPressed()) {
     btHdown.drawSmoothButton(true);
-    TempState = 4; //Humidity -0.1%
   }
+  TempState = 4; //Humidity -1%
 }
 
 void btHdown_releaseAction(void)

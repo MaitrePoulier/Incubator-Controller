@@ -14,4 +14,9 @@
     #define MINPRESSURE 50
     //#define MAXPRESSURE 10000 //1000 is enough for 10 bits ADC
 
+    //Define the 3 CS IO for the 3x PRT on the SPI
+    #define CS_1    40
+    #define CS_2    5
+    #define CS_3    6
+
 #endif

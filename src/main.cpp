@@ -63,18 +63,27 @@ TFT_eSPI tft = TFT_eSPI();       // Invoke custom library
 uint16_t TempTable[TABLE_WIDTH][TABLE_HEIGHT];
 TFT_eSprite TempTable_Spr = TFT_eSprite(&tft); // Declare Sprite object "spr" with pointer to "tft" object
 
+
 //Initiate humidity and temperature sensor
-Adafruit_SHT31 sht31 = Adafruit_SHT31();
+TwoWire I2C_1 = TwoWire(0);
+TwoWire I2C_2 = TwoWire(1);
+Adafruit_SHT31 sht31_room = Adafruit_SHT31();
+Adafruit_SHT31 sht31_chamber = Adafruit_SHT31();
 
 // Use software SPI: CS, DI, DO, CLK
-Adafruit_MAX31865 thermo1 = Adafruit_MAX31865(40,39,3,4);
+Adafruit_MAX31865 thermo1 = Adafruit_MAX31865(CS_1,39,3,4); //left  (top of the chamber - Red)
+Adafruit_MAX31865 thermo2 = Adafruit_MAX31865(CS_2,39,3,4); //middle (Middle of the chamber - Green)
+Adafruit_MAX31865 thermo3 = Adafruit_MAX31865(CS_3,39,3,4);  //right (Bot of the chamber - Blue)
 // The value of the Rref resistor. Use 430.0 for PT100 and 4300.0 for PT1000
 #define RREF      4300.0
 // The 'nominal' 0-degrees-C resistance of the sensor
 // 100.0 for PT100, 1000.0 for PT1000
 #define RNOMINAL  1000.0
 float rtd_1;
+float rtd_2;
+float rtd_3;
 float avrTemp = 30;
+
 
 
 //Touchscreen
@@ -151,13 +160,32 @@ void setup() {
   pinMode(RELAY4, OUTPUT);
   pinMode(RELAY5, OUTPUT);
   pinMode(RELAY6, OUTPUT);
-  
-  Serial.println("SHT31 test");
-  if (! sht31.begin(0x44)) {   // Set to 0x45 for alternate i2c addr
-    Serial.println("Couldn't find SHT31");
+
+  /////////////////////////
+  // Initialise both SHT31
+  //https://randomnerdtutorials.com/esp32-i2c-communication-arduino-ide/ 
+  I2C_1.begin(8,9,100000);
+  I2C_2.begin(35,36,100000);
+  sht31_room = Adafruit_SHT31(&I2C_1);
+  sht31_chamber = Adafruit_SHT31(&I2C_2);
+
+  Serial.println("SHT31 room test");
+  if (! sht31_room.begin(0x44)) {   // Set to 0x45 for alternate i2c addr
+    Serial.println("Couldn't find SHT31 room");
     while (1) delay(1);
   }
+
+  Serial.println("SHT31 chamber test");
+  if (! sht31_chamber.begin(0x44)) {   // Set to 0x45 for alternate i2c addr
+    Serial.println("Couldn't find SHT31 chamber");
+    while (1) delay(1);
+  }
+  //////////////////
+
+
   thermo1.begin(MAX31865_3WIRE); 
+  thermo2.begin(MAX31865_3WIRE); 
+  thermo3.begin(MAX31865_3WIRE); 
   
   //We draw the buttons
   initButtons();
@@ -196,33 +224,46 @@ void setup() {
 void loop() {
   // Reading temperature or humidity takes about 250 milliseconds!
   // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
-  float h = sht31.readHumidity();
+  float room_h = sht31_room.readHumidity();
+  float chamber_h = sht31_chamber.readHumidity();
   // Read temperature as Celsius (the default)
-  float t = sht31.readTemperature();
+  float room_t = sht31_room.readTemperature();
   // Check if any reads failed and exit early (to try again).
-  if (isnan(h) || isnan(t)) {
-    Serial.println(F("Failed to read from DHT sensor!"));
+  if (isnan(room_h) || isnan(room_t)) {
+    Serial.println(F("Failed to read from DHT room sensor!"));
+    return;
+  }
+  if (isnan(chamber_h)) {
+    Serial.println(F("Failed to read from DHT chamber sensor!"));
     return;
   }
 
+
   
-  Serial.print(F("Humidity: "));
-  Serial.print(h);
+  Serial.print(F("Room Humidity: "));
+  Serial.print(room_h);
   Serial.println(F("%"));
 
-  Serial.print("Temperature: ");
-  Serial.print(t);
-  Serial.println(F("°C"));
+  Serial.print(F("Chamber  Humidity: "));
+  Serial.print(chamber_h);
+  Serial.println(F("%"));
+
+  Serial.print("Room Temperature: ");
+  Serial.print(room_t);
+  Serial.println(F("oC"));
   
+
   rtd_1 = thermo1.temperature(RNOMINAL, RREF); //the function is blocking. It cost 75ms
-  avrTemp = rtd_1; //+rtd_2 + rtd_3)/3;
+  rtd_2 = thermo2.temperature(RNOMINAL, RREF);
+  rtd_3 = thermo3.temperature(RNOMINAL, RREF);
+  avrTemp = (rtd_1 + rtd_2 + rtd_3)/3;
 
   // Send the average temperature of the 3 RTD to the PID task
   // The xQueueSend wait after the PID to remove the value from the Queue
   xQueueSend(avrTempQueue, &avrTemp, portMAX_DELAY);
   Serial.print("avrg. temps = "); Serial.println(avrTemp);
 
-  Draw_data(setTemp, setHumidity, t, 48.99, int((TiltInterval - millis())/1000/60), 150, h, rtd_1+0.1, rtd_1, rtd_1-0.1);
+  Draw_data(setTemp, setHumidity, room_t, room_h, int((TiltInterval - millis())/1000/60), 150, chamber_h, rtd_1, rtd_2, rtd_3);
   
 
   // for now we update the plot only every 10 cycles or 10 x 140ms = 1.4s
@@ -232,7 +273,7 @@ void loop() {
   {
     count = 0;
     //plot the tableau
-    Add_Value_Table(TempTable,rtd_1+0.1, rtd_1, rtd_1-0.1);
+    Add_Value_Table(TempTable,rtd_1, rtd_2, rtd_3);
     Draw_Table(TempTable);
     //We only save 20ms with the sprite method over writing directly on the screen... 
     //But it's better than nothing!!
@@ -241,12 +282,12 @@ void loop() {
   
 
   //Humidity
-  if (h <= setHumidity -5 )
+  if (chamber_h <= setHumidity -5 )
   {
     Humidifier = true;
     digitalWrite(RELAY2,HIGH);
   }
-  if (h > setHumidity)
+  if (chamber_h > setHumidity)
   {
     Humidifier = false;
     digitalWrite(RELAY2,LOW);

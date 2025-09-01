@@ -1,13 +1,7 @@
 {
-	"folders": [
-		{
-			"name": "Incubator-Controller",
-			"path": ".."
-		}
-	],
-	"settings": {
-		"files.associations": {
-			"cmath": "cpp"
-		}
-	}
+    "folders": [
+        {
+            "path": ".."
+        }
+    ]
 }

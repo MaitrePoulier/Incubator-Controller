@@ -43,6 +43,7 @@ unsigned long   TiltInterval = 7200000; //Interval before 2 tilt in ms: 2h
 #define   RELAY4 42   //Tilt up
 #define   RELAY5 45   //Tilt Down
 #define   RELAY6 46 
+#define   BUZZER 21 
 
 
 bool Humidifier = false; //set if the humidifier is on or off
@@ -74,11 +75,6 @@ Adafruit_SHT31 sht31_chamber = Adafruit_SHT31();
 Adafruit_MAX31865 thermo1 = Adafruit_MAX31865(CS_1,39,3,4); //left  (top of the chamber - Red)
 Adafruit_MAX31865 thermo2 = Adafruit_MAX31865(CS_2,39,3,4); //middle (Middle of the chamber - Green)
 Adafruit_MAX31865 thermo3 = Adafruit_MAX31865(CS_3,39,3,4);  //right (Bot of the chamber - Blue)
-// The value of the Rref resistor. Use 430.0 for PT100 and 4300.0 for PT1000
-#define RREF      4300.0
-// The 'nominal' 0-degrees-C resistance of the sensor
-// 100.0 for PT100, 1000.0 for PT1000
-#define RNOMINAL  1000.0
 float rtd_1;
 float rtd_2;
 float rtd_3;
@@ -89,9 +85,17 @@ float avrTemp = 30;
 //Touchscreen
 u_int16_t x,y;
 bool pressed;
-
 int count;
 
+//Alarm Type
+enum Alarm{
+  NONE,
+  ALARM,
+  ALARM_MUTE
+};
+
+enum Alarm HumidityAlarm = ALARM;
+enum Alarm TemperatureAlarm = ALARM;
 
 // Function that implement the PID
 // We put it on core 0 to be able to control precisely the time it take to execute
@@ -118,20 +122,23 @@ void PIDCtrl(void *pvParameters) {
     //Serial.println(windowStartTime);
     //Serial.print("setpoint: ");
     //Serial.println(myPID.GetSetpoint());
-    if (output > millis() - windowStartTime && output > MIN_PID_TIME_WIDTH + 0.01)
-    {
-      digitalWrite(RELAY1,HIGH);
-      //tft.setTextColor(TFT_RED, TFT_BLACK);
-      //tft.drawString("Heat On ", 390, 190,2);
-      //tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    }
-    else
-    {
-      digitalWrite(RELAY1,LOW);
-      //tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
-      //tft.drawString("Heat Off", 390, 190,2);
-      //tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    }
+    #ifndef _StopRelay
+      if (output > millis() - windowStartTime && output > MIN_PID_TIME_WIDTH + 0.01)
+      {
+        digitalWrite(RELAY1,HIGH);
+
+        //tft.setTextColor(TFT_RED, TFT_BLACK);
+        //tft.drawString("Heat On ", 390, 190,2);
+        //tft.setTextColor(TFT_WHITE, TFT_BLACK);
+      }
+      else
+      {
+        digitalWrite(RELAY1,LOW);
+        //tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+        //tft.drawString("Heat Off", 390, 190,2);
+        //tft.setTextColor(TFT_WHITE, TFT_BLACK);
+      }
+    #endif
 
   //End temperature asservissement
   //Serial.print("PID is on core: ");
@@ -160,6 +167,7 @@ void setup() {
   pinMode(RELAY4, OUTPUT);
   pinMode(RELAY5, OUTPUT);
   pinMode(RELAY6, OUTPUT);
+  pinMode(BUZZER, OUTPUT);
 
   /////////////////////////
   // Initialise both SHT31
@@ -199,7 +207,7 @@ void setup() {
   // tell the PID to range between 0 and the full window size
   myPID.SetOutputLimits(MIN_PID_TIME_WIDTH, WindowSize);
   // turn the PID on
-  myPID.Start(thermo1.temperature(RNOMINAL, RREF),  // input
+  myPID.Start(thermo1.temperature(RNOMINAL_TOP, RREF),  // input
               0,                      // current output
               setTemp);                   // setpoint
 
@@ -217,6 +225,10 @@ void setup() {
     0);                 // Core to run the task (Core 0)
 
   TiltInterval = TILT_INTERVAL + millis(); //2h waiting time at start
+
+  //For the ESP32 PWM channel
+  ledcSetup(PWM_Channel, Frequency, Resolution);            // Set a LEDC channel
+  ledcAttachPin(BUZZER, PWM_Channel);              // Connect the channel to the corresponding pin
   
 }
 
@@ -253,10 +265,11 @@ void loop() {
   Serial.println(F("oC"));
   
 
-  rtd_1 = thermo1.temperature(RNOMINAL, RREF); //the function is blocking. It cost 75ms
-  rtd_2 = thermo2.temperature(RNOMINAL, RREF);
-  rtd_3 = thermo3.temperature(RNOMINAL, RREF);
+  rtd_1 = thermo1.temperature(RNOMINAL_TOP, RREF); //the function is blocking. It cost 75ms
+  rtd_2 = thermo2.temperature(RNOMINAL_MID, RREF);
+  rtd_3 = thermo3.temperature(RNOMINAL_LOW, RREF);
   avrTemp = (rtd_1 + rtd_2 + rtd_3)/3;
+
 
   // Send the average temperature of the 3 RTD to the PID task
   // The xQueueSend wait after the PID to remove the value from the Queue
@@ -379,4 +392,23 @@ void loop() {
   Display_Refresh(currentMillis-previousMillis);
   previousMillis = currentMillis;
   Serial.println("");
+
+  if(HumidityAlarm == ALARM)
+  {
+      ledcWrite(PWM_Channel, Dutyfactor);
+      delay(100);
+      ledcWrite(PWM_Channel, 0);
+  };
+      delay(100);
+  if(TemperatureAlarm == ALARM)
+  {
+      ledcWrite(PWM_Channel, Dutyfactor);
+      delay(100);
+      ledcWrite(PWM_Channel, 0);
+      delay(100);
+      ledcWrite(PWM_Channel, Dutyfactor);
+      delay(100);
+      ledcWrite(PWM_Channel, 0);
+  };
+
 }

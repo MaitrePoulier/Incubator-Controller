@@ -254,7 +254,8 @@ float Adafruit_MAX31865::calculateTemperature(uint16_t RTDraw, float RTDnominal,
   Rt /= 32768;
   Rt *= refResistor;
 
-  // Serial.print("\nResistance: "); Serial.println(Rt, 8);
+  
+  //Serial.print("\nResistance: "); Serial.println(Rt, 8);                                           
 
   Z1 = -RTD_A;
   Z2 = RTD_A * RTD_A - (4 * RTD_B);

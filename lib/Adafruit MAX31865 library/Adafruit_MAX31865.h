@@ -79,6 +79,12 @@ public:
   uint8_t readFault(max31865_fault_cycle_t fault_cycle = MAX31865_FAULT_AUTO);
   void clearFault(void);
   uint16_t readRTD();
+  
+  //3 next function by YV
+  void ClearFault(void);
+  void askData(void);
+  uint16_t readData(void);
+  //End of modification
 
   void setThresholds(uint16_t lower, uint16_t upper);
   uint16_t getLowerThreshold(void);

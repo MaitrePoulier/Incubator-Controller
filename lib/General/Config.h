@@ -1,9 +1,9 @@
 #ifndef _CONFIG_H
-#define _CONFIG_H
+    #define _CONFIG_H
 
     //For the plot
     #define RESOLUTION 0.03125 //it's the granularity of the RTD decoder
-    #define MIN_VALUE -1 // 37.7 - 160 * 0.03125  /2 in oC
+    #define MIN_VALUE 21 // 37.7 - 160 * 0.03125  /2 in oC
     #define TABLE_HEIGHT  160
     #define TABLE_WIDTH 390
     #define TILT_DURATION  120000 //2min in ms
@@ -19,6 +19,14 @@
     #define CS_2    5
     #define CS_3    6
 
+    #define   RELAY1 1    //Heat
+    #define   RELAY2 2    //Humidity
+    #define   RELAY3 41   //Exaust Fan
+    #define   RELAY4 42   //Tilt up
+    #define   RELAY5 45   //Tilt Down
+    #define   RELAY6 46 
+    #define   BUZZER 21 
+
     // The value of the Rref resistor. Use 430.0 for PT100 and 4300.0 for PT1000
     #define RREF      4300.0
     // The 'nominal' 0-degrees-C resistance of the sensor
@@ -28,7 +36,7 @@
     
     #define RNOMINAL_TOP  1000.72631836
     #define RNOMINAL_MID  1000.72631836
-    #define RNOMINAL_LOW  1000.07019043
+    #define RNOMINAL_BOT  1000.07019043
 
     //Uncomment of debugging purpose
     #define _StopRelay
@@ -38,5 +46,13 @@
     #define Frequency       1000     // PWM frequencyconst
     #define Resolution      8       // PWM resolution ratio
     #define Dutyfactor      200     // PWM Dutyfactor
+
+    //Alarm Type
+    enum Alarm{
+        NONE = 1,
+        ALARM = 2,
+        ALARM_MUTE = 3
+    };
+
 
 #endif

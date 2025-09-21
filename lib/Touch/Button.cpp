@@ -170,6 +170,7 @@ void btAlarm_pressAction(void)
 {
   if (btAlarm.justPressed()) {
     btAlarm.drawSmoothButton(true);
+    TempState = 8; //Will Mute alarm if on
   }
 }
 
@@ -232,12 +233,26 @@ void initButtons() {
   btTiltdown.drawSmoothButton(false, 3, TFT_BLACK); // 3 is outline width, TFT_BLACK is the surrounding background colour for anti-aliasing
 
   
-  x = 400;
+  x = 410;
   btAlarm.initButtonUL(x, y, BUTTON_W, BUTTON_H, TFT_WHITE, TFT_YELLOW, TFT_BLACK, const_cast<char *>("Alarm"), 1);
   btAlarm.setPressAction(btAlarm_pressAction);
   btAlarm.setReleaseAction(btAlarm_releaseAction);
   btAlarm.drawSmoothButton(false, 3, TFT_BLACK); // 3 is outline width, TFT_BLACK is the surrounding background colour for anti-aliasing
 
+  //We put beack the display setting
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.setTextSize(1);
+  tft.setTextFont(2);
+  tft.setTextDatum(BL_DATUM);
+}
+
+void displayAlarm(enum Alarm HumidityAlarm, enum Alarm TemperatureAlarm)
+{
+  if (HumidityAlarm != NONE || TemperatureAlarm != NONE )
+  {
+    if (btAlarm.getState() == 1) btAlarm.drawSmoothButton(false,3,TFT_BLACK,"Alarm");
+    else  btAlarm.drawSmoothButton(true,3,TFT_YELLOW,"!!ALARM!!");  
+  }
 }
 
 

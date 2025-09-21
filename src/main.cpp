@@ -1,22 +1,19 @@
 #include <Arduino.h>
 #include <Config.h>
+#include <General.h>
 #include <SPI.h>
 #include <TFT_eSPI.h> // Hardware-specific library
 #include <ScreenStuff.h>
-
 #include <Button.h> //Pour l'écran de boutons
-
-//For the DHT-11 humidity sensors
-// Default I2C pins with the esp32-s3-devkitc-1
-// GPIO 8 (SDA)  SHT30 White Wire
-// GPIO 9 (SCL)  SHT30 Yellow Wire 
 #include <Wire.h>
 #include "Adafruit_SHT31.h"
 
 // Task handles
 TaskHandle_t TaskPID;
+TaskHandle_t TaskBuzzer;
 // Queue handle for inter-core communication
 QueueHandle_t avrTempQueue;
+int AlarmCode;
 
 //For the PID
 #include <PID_v2.h>
@@ -31,19 +28,12 @@ double output;
 
 #include <Adafruit_MAX31865.h>
 
-float setTemp = 37.8;
+float setTemp = 37.7;
 float setHumidity = 50;
 int   Tilt = 0; //no tilt
 int   NextTilt = 1; //go up next time
 unsigned long   TiltTimer    =  120000; // The duration of the tile in ms: 2min
 unsigned long   TiltInterval = 7200000; //Interval before 2 tilt in ms: 2h
-#define   RELAY1 1    //Heat
-#define   RELAY2 2    //Humidity
-#define   RELAY3 41   //Exaust Fan
-#define   RELAY4 42   //Tilt up
-#define   RELAY5 45   //Tilt Down
-#define   RELAY6 46 
-#define   BUZZER 21 
 
 
 bool Humidifier = false; //set if the humidifier is on or off
@@ -51,12 +41,6 @@ bool Fan = false; //set if the Output Fan is on or off
 
 unsigned long currentMillis;
 unsigned long previousMillis = 0;
-
-//#include "freertos/FreeRTOSConfig.h"
-//#include <Wire.h> //pour l'I2C
-//#include "BodmerTFT.h"
-
-
 
 //Screen pinout define in /pio/libdeps/adafruit.../TFT_eSPI/User_Setup_Select.h
 //  then: <User_Setups/TFT_User_Setup_ILI9486.h>
@@ -80,20 +64,12 @@ float rtd_2;
 float rtd_3;
 float avrTemp = 30;
 
-
-
-//Touchscreen
+//Variables for the touchscreen
 u_int16_t x,y;
 bool pressed;
 int count;
 
-//Alarm Type
-enum Alarm{
-  NONE,
-  ALARM,
-  ALARM_MUTE
-};
-
+//2 variable to handle alarm type
 enum Alarm HumidityAlarm = ALARM;
 enum Alarm TemperatureAlarm = ALARM;
 
@@ -146,7 +122,57 @@ void PIDCtrl(void *pvParameters) {
   vTaskDelay(10);
   }
 }
+void Buzzer(void *pvParameters) {
+  while (true) {
 
+    if(HumidityAlarm == ALARM)
+    {
+        ledcWrite(PWM_Channel, Dutyfactor);
+        vTaskDelay(100);
+        ledcWrite(PWM_Channel, 0);
+    };
+    
+    vTaskDelay(500);
+
+    if(TemperatureAlarm == ALARM)
+    {
+        ledcWrite(PWM_Channel, Dutyfactor);
+        vTaskDelay(100);
+        ledcWrite(PWM_Channel, 0);
+        vTaskDelay(100);
+        ledcWrite(PWM_Channel, Dutyfactor);
+        vTaskDelay(100);
+        ledcWrite(PWM_Channel, 0);
+    };
+
+    vTaskDelay(500);
+  };
+  /*
+    if(AlarmCode == 12 || AlarmCode == 22 || AlarmCode == 32 )
+    {
+        ledcWrite(PWM_Channel, Dutyfactor);
+        vTaskDelay(100);
+        ledcWrite(PWM_Channel, 0);
+    };
+    
+    vTaskDelay(10);
+
+    if(AlarmCode == 21 || AlarmCode == 22 || AlarmCode == 23 )
+    {
+        ledcWrite(PWM_Channel, Dutyfactor);
+        vTaskDelay(100);
+        ledcWrite(PWM_Channel, 0);
+        vTaskDelay(100);
+        ledcWrite(PWM_Channel, Dutyfactor);
+        vTaskDelay(100);
+        ledcWrite(PWM_Channel, 0);
+    };
+
+    vTaskDelay(10);
+  };*/
+};
+
+void Read3PRT();
 
 void setup() {
   // Some boards work best if we also make a serial connection
@@ -197,10 +223,6 @@ void setup() {
   
   //We draw the buttons
   initButtons();
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.setTextSize(1);
-  tft.setTextFont(2);
-  tft.setTextDatum(BL_DATUM);
 
   //PID
   windowStartTime = millis();
@@ -222,14 +244,23 @@ void setup() {
     NULL,               // Parameter to pass to the task
     2,                  // Task priority
     &TaskPID,             // Task handle
+    0);                 // Core to run the task (Core 0
+    
+  // Create the Buzzer task on core 0
+  xTaskCreatePinnedToCore(
+    Buzzer,       // Task function
+    "TaskBuzzer",            // Name of the task
+    10000,               // Stack size (bytes)  at 1000 it make a stack overflow
+    NULL,               // Parameter to pass to the task
+    2,                  // Task priority
+    &TaskBuzzer,             // Task handle
     0);                 // Core to run the task (Core 0)
 
   TiltInterval = TILT_INTERVAL + millis(); //2h waiting time at start
 
   //For the ESP32 PWM channel
-  ledcSetup(PWM_Channel, Frequency, Resolution);            // Set a LEDC channel
+  ledcSetup(PWM_Channel, Frequency, Resolution);   // Set a LEDC channel
   ledcAttachPin(BUZZER, PWM_Channel);              // Connect the channel to the corresponding pin
-  
 }
 
 
@@ -250,31 +281,16 @@ void loop() {
     return;
   }
 
+  // We read the 3 RTD
+  // change the value of rtd_1, rtd_2, rtd_3 and avrTemp
+  Read3PRT();
 
-  
-  Serial.print(F("Room Humidity: "));
-  Serial.print(room_h);
-  Serial.println(F("%"));
-
-  Serial.print(F("Chamber  Humidity: "));
-  Serial.print(chamber_h);
-  Serial.println(F("%"));
-
-  Serial.print("Room Temperature: ");
-  Serial.print(room_t);
-  Serial.println(F("oC"));
-  
-
-  rtd_1 = thermo1.temperature(RNOMINAL_TOP, RREF); //the function is blocking. It cost 75ms
-  rtd_2 = thermo2.temperature(RNOMINAL_MID, RREF);
-  rtd_3 = thermo3.temperature(RNOMINAL_LOW, RREF);
-  avrTemp = (rtd_1 + rtd_2 + rtd_3)/3;
-
+  // We send the value to the serial for logging purpose
+  SentSerial(room_h, chamber_h, room_t, avrTemp);
 
   // Send the average temperature of the 3 RTD to the PID task
   // The xQueueSend wait after the PID to remove the value from the Queue
   xQueueSend(avrTempQueue, &avrTemp, portMAX_DELAY);
-  Serial.print("avrg. temps = "); Serial.println(avrTemp);
 
   Draw_data(setTemp, setHumidity, room_t, room_h, int((TiltInterval - millis())/1000/60), 150, chamber_h, rtd_1, rtd_2, rtd_3);
   
@@ -378,9 +394,16 @@ void loop() {
       Tilt = 2; //down
       TiltInterval = TILT_INTERVAL + millis(); //we add a new 2h
       break;  
+    case 8: //Mute alarm if on
+      if(HumidityAlarm == ALARM) HumidityAlarm = ALARM_MUTE;
+      if(TemperatureAlarm == ALARM) TemperatureAlarm = ALARM_MUTE;
+      break;  
+
     default:
       break;    
   }
+
+
 
   Display_Heater(output); //Display heater on/off
   Display_Humidifier(Humidifier);
@@ -392,23 +415,29 @@ void loop() {
   Display_Refresh(currentMillis-previousMillis);
   previousMillis = currentMillis;
   Serial.println("");
+  
+  displayAlarm(HumidityAlarm, TemperatureAlarm);
+}
 
-  if(HumidityAlarm == ALARM)
-  {
-      ledcWrite(PWM_Channel, Dutyfactor);
-      delay(100);
-      ledcWrite(PWM_Channel, 0);
-  };
-      delay(100);
-  if(TemperatureAlarm == ALARM)
-  {
-      ledcWrite(PWM_Channel, Dutyfactor);
-      delay(100);
-      ledcWrite(PWM_Channel, 0);
-      delay(100);
-      ledcWrite(PWM_Channel, Dutyfactor);
-      delay(100);
-      ledcWrite(PWM_Channel, 0);
-  };
+void Read3PRT()
+{
+  // We read the 3 RTD
+  // Clear fault x3
+  thermo1.ClearFault();
+  thermo2.ClearFault();
+  thermo3.ClearFault();
+  vTaskDelay(5);
 
+  // ask for data x3
+  thermo1.askData();
+  thermo2.askData();
+  thermo3.askData();
+  vTaskDelay(50);
+
+  // read data x3 and convert to temperature
+  rtd_1 = thermo1.calculateTemperature(thermo1.readData(), RNOMINAL_TOP, RREF);
+  rtd_2 = thermo2.calculateTemperature(thermo2.readData(), RNOMINAL_MID, RREF);
+  rtd_3 = thermo3.calculateTemperature(thermo3.readData(), RNOMINAL_BOT, RREF);
+
+  avrTemp = (rtd_1 + rtd_2 + rtd_3) / 3;
 }

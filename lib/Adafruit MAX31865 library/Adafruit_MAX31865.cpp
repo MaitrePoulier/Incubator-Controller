@@ -12,7 +12,13 @@
 
   Written by Limor Fried/Ladyada for Adafruit Industries.
   BSD license, all text above must be included in any redistribution
+
+ Modified by Yannick Vallée for Incubator project
+ exploded the readRTD function to be non blocking
+
  ****************************************************/
+
+
 
 #include "Adafruit_MAX31865.h"
 #ifdef __AVR
@@ -305,6 +311,30 @@ uint16_t Adafruit_MAX31865::readRTD(void) {
 
   uint16_t rtd = readRegister16(MAX31865_RTDMSB_REG);
 
+  enableBias(false); // Disable bias current again to reduce selfheating.
+
+  // remove fault
+  rtd >>= 1;
+
+  return rtd;
+}
+
+
+//3 functions below are modifications by YV to make the reading non blocking
+void Adafruit_MAX31865::ClearFault(void){
+  clearFault();
+  enableBias(true);
+}
+
+void Adafruit_MAX31865::askData(void){
+  uint8_t t = readRegister8(MAX31865_CONFIG_REG);
+  t |= MAX31865_CONFIG_1SHOT;
+  writeRegister8(MAX31865_CONFIG_REG, t);
+}
+
+uint16_t Adafruit_MAX31865::readData(void)
+{
+  uint16_t rtd = readRegister16(MAX31865_RTDMSB_REG);
   enableBias(false); // Disable bias current again to reduce selfheating.
 
   // remove fault

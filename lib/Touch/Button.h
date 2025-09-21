@@ -4,6 +4,7 @@
     #include <TFT_eSPI.h>
     #include <TFT_eWidget.h>           // Widget library
     #include "Free_Fonts.h" // Include the header file attached to this sketch
+    #include "Config.h"
 
     void btTup_pressAction(void);
     void btTup_releaseAction(void);
@@ -29,4 +30,6 @@
 
     #define BUTTON_W 70
     #define BUTTON_H 50
+
+    void displayAlarm(enum Alarm, enum Alarm); 
 #endif

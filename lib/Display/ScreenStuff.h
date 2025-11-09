@@ -7,7 +7,7 @@
   #include "Free_Fonts.h" // Include the header file attached to this sketch
 
   void Draw_screen_background();
-  void Draw_data(float , float , float , float ,  int , int , float ,float , float , float );
+  void Draw_data(Incubator_t *);
   void Init_Table(uint16_t TempTable[][TABLE_HEIGHT]);
   void Add_Value_Table(uint16_t TempTable[][TABLE_HEIGHT],float , float , float );
   void Display_UpTime(unsigned long );

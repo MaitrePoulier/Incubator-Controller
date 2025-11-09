@@ -1,7 +1,8 @@
 #include "Button.h"
+#include <Config.h>
 
 extern TFT_eSPI tft;
-int TempState; //Vraiment pas élégant.. mais je ne sais pas comment faire autrement.
+Button_t TempState = idle; //Vraiment pas élégant.. mais je ne sais pas comment faire autrement.
 
 ButtonWidget btTup  = ButtonWidget(&tft);
 ButtonWidget btTdown  = ButtonWidget(&tft);
@@ -33,14 +34,14 @@ ButtonWidget btAlarm  = ButtonWidget(&tft);
 ButtonWidget* btn[] = {&btTup , &btTdown, &btHup, &btHdown, &btTiltup, &btTiltdown, &btAlarm};
 uint8_t buttonCount = sizeof(btn) / sizeof(btn[0]);
 
-int MainScreenButton(bool pressed,u_int16_t x,u_int16_t y)
+Button_t MainScreenButton(bool pressed,u_int16_t x,u_int16_t y)
 {
   tft.setFreeFont(FF17);
   tft.setTextSize(1);
   tft.setTextPadding(9*4);
   tft.setTextDatum(TR_DATUM);
-
-  TempState = 0;
+  
+  TempState = idle; //Default state
   static uint32_t scanTime = millis();
 
   // Scan keys every 50ms at most
@@ -69,7 +70,7 @@ void btTup_pressAction(void)
   if (btTup.justPressed()) {
     //Serial.println("Left button just pressed");
     btTup.drawSmoothButton(true);
-    TempState = 1; //temp +0.1oC
+    TempState = btTempUp; //temp +0.1oC
   }
 }
 
@@ -87,7 +88,7 @@ void btTdown_pressAction(void)
   if (btTdown.justPressed()) {
     //Serial.println("Left button just pressed");
     btTdown.drawSmoothButton(true);
-    TempState = 2; //temp -0.1oC
+    TempState = btTempDown; //temp -0.1oC
   }
 }
 
@@ -104,7 +105,7 @@ void btHup_pressAction(void)
   if (btHup.justPressed()) {
     btHup.drawSmoothButton(true);
   }
-  TempState = 3; //Humidity +1%
+  TempState = btHumidUp; //Humidity +1%
 }
 
 void btHup_releaseAction(void)
@@ -120,7 +121,7 @@ void btHdown_pressAction(void)
   if (btHdown.justPressed()) {
     btHdown.drawSmoothButton(true);
   }
-  TempState = 4; //Humidity -1%
+  TempState = btHumidDown; //Humidity -1%
 }
 
 void btHdown_releaseAction(void)
@@ -136,7 +137,7 @@ void btTiltup_pressAction(void)
 {
   if (btTiltup.justPressed()) {
     btTiltup.drawSmoothButton(true);
-    TempState = 5; //Tilt UP until release
+    TempState = btTiltUpStart; //Tilt UP until release
   }
 }
 
@@ -145,7 +146,7 @@ void btTiltup_releaseAction(void)
   if (btTiltup.justReleased()) {
     //Serial.println("Qualib");
     btTiltup.drawSmoothButton(false);
-    TempState = 6; //Stop Tilt
+    TempState = btTiltStop; //Stop Tilt
   }
 }
 
@@ -153,7 +154,7 @@ void btTiltdown_pressAction(void)
 {
   if (btTiltdown.justPressed()) {
     btTiltdown.drawSmoothButton(true);
-    TempState = 7; //Tilt Down until release
+    TempState = btTiltDown; //Tilt Down until release
   }
 }
 
@@ -162,7 +163,7 @@ void btTiltdown_releaseAction(void)
   if (btTiltdown.justReleased()) {
     //Serial.println("Qualib");
     btTiltdown.drawSmoothButton(false);
-    TempState = 6; //Stop Tilt
+    TempState = btTiltStop; //Stop Tilt
   }
 }
 
@@ -170,7 +171,7 @@ void btAlarm_pressAction(void)
 {
   if (btAlarm.justPressed()) {
     btAlarm.drawSmoothButton(true);
-    TempState = 8; //Will Mute alarm if on
+    TempState = btAlarmMute; //Will Mute alarm if on
   }
 }
 
@@ -246,7 +247,7 @@ void initButtons() {
   tft.setTextDatum(BL_DATUM);
 }
 
-void displayAlarm(enum Alarm HumidityAlarm, enum Alarm TemperatureAlarm)
+void displayAlarm(Alarm_t HumidityAlarm, Alarm_t TemperatureAlarm)
 {
   if (HumidityAlarm != NONE || TemperatureAlarm != NONE )
   {

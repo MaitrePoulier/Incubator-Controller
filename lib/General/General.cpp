@@ -1,19 +1,20 @@
 #include <General.h>
+#include <Config.h>
 
-void SentSerial(float room_h, float chamber_h,float room_t, float avrTemp)
-{
+void SentSerial(Incubator_t *incubator){
+
   Serial.print(F("Room Humidity: "));
-  Serial.print(room_h);
+  Serial.print(incubator->roomHumidity);
   Serial.println(F("%"));
 
   Serial.print(F("Chamber  Humidity: "));
-  Serial.print(chamber_h);
+  Serial.print(incubator->chamberHumidity);
   Serial.println(F("%"));
 
   Serial.print("Room Temperature: ");
-  Serial.print(room_t);
+  Serial.print(incubator->roomTemp);
   Serial.println(F("oC"));
 
   Serial.print("avrg. temps = "); 
-  Serial.println(avrTemp);
+  Serial.println(incubator->avrTemp);
 }

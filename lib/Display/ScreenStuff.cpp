@@ -31,7 +31,7 @@ void Draw_screen_background()
   tft.drawRect(0,0,TABLE_WIDTH-1,TABLE_HEIGHT-1,TFT_WHITE);
 }
 
-void Draw_data(float Tset, float Hset, float Troom, float Hroom, int TBT, int uptime, float Hnow, float Ttop, float Tmid, float Tlow)
+void Draw_data(Incubator_t *incubator)
 {
   tft.setTextSize(1);
   tft.setTextFont(1);
@@ -39,26 +39,27 @@ void Draw_data(float Tset, float Hset, float Troom, float Hroom, int TBT, int up
   tft.setTextDatum(BL_DATUM);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
 
-  tft.drawFloat(Tset,1,150,190,2);
+  tft.drawFloat(incubator->setTemp,1,150,190,2);
   tft.drawString("°C", 183, 190, 2);
 
-  tft.drawFloat(Hset,1,150,210,2);
+  tft.drawFloat(incubator->setHumidity,1,150,210,2);
   tft.drawString("%", 183, 210, 2); 
 
   tft.setTextColor(TFT_BLUE, TFT_BLACK);
-  tft.drawFloat((Ttop+Tmid+Tlow)/3,1,230,190,2);
+  tft.drawFloat(incubator->avrTemp,1,230,190,2);
   tft.drawString("°C", 263, 190, 2);
-  tft.drawFloat(Hnow,1,230,210,2);
+  tft.drawFloat(incubator->chamberHumidity,1,230,210,2);
   tft.drawString("%", 263, 210, 2); 
 
 
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.drawFloat(Troom,1,95,270);
+  tft.drawFloat(incubator->roomTemp,1,95,270);
   tft.drawString("°C", 125, 270);
 
-  tft.drawFloat(Hroom,1,95,280);
+  tft.drawFloat(incubator->roomHumidity,1,95,280);
   tft.drawString("%", 125, 280); 
-
+  
+  int TBT = (incubator->tiltInterval - millis())/1000/60;
   tft.setTextPadding(6*3);
   tft.drawNumber(TBT,95,290);
   tft.setTextPadding(6*2);
@@ -66,13 +67,13 @@ void Draw_data(float Tset, float Hset, float Troom, float Hroom, int TBT, int up
  
 
   tft.setTextColor(TFT_RED, TFT_BLACK);
-  tft.drawFloat(Ttop,2,390,40,4);
+  tft.drawFloat(incubator->rtd_1,2,390,40,4);
   tft.drawString("°C", 460, 40,4);
   tft.setTextColor(TFT_GREEN, TFT_BLACK);
-  tft.drawFloat(Tmid,2,390,90,4);
+  tft.drawFloat(incubator->rtd_2,2,390,90,4);
   tft.drawString("°C", 460, 90,4);
   tft.setTextColor(TFT_BLUE, TFT_BLACK);
-  tft.drawFloat(Tlow,2,390,140,4);
+  tft.drawFloat(incubator->rtd_3,2,390,140,4);
   tft.drawString("°C", 460, 140,4);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
 

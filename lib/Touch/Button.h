@@ -25,11 +25,11 @@
     void initReTareButton(int,int);
     void initButtons(void);
 
-    int MainScreenButton(bool,u_int16_t,u_int16_t);
+    Button_t MainScreenButton(bool,u_int16_t,u_int16_t);
     int ReTareButton(bool,u_int16_t,u_int16_t);
 
     #define BUTTON_W 70
     #define BUTTON_H 50
 
-    void displayAlarm(enum Alarm, enum Alarm); 
+    void displayAlarm(Alarm_t, Alarm_t); 
 #endif

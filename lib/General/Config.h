@@ -19,11 +19,11 @@
     #define CS_2    5
     #define CS_3    6
 
-    #define   RELAY1 1    //Heat
-    #define   RELAY2 2    //Humidity
-    #define   RELAY3 41   //Exaust Fan
-    #define   RELAY4 42   //Tilt up
-    #define   RELAY5 45   //Tilt Down
+    #define   relayHeat     1    //Heat
+    #define   relayHumidity 2    //Humidity
+    #define   relayFan      41   //Exaust Fan
+    #define   relayTiltUp   42   //Tilt up
+    #define   relayTiltDown 45   //Tilt Down
     #define   RELAY6 46 
     #define   BUZZER 21 
 
@@ -48,11 +48,46 @@
     #define Dutyfactor      200     // PWM Dutyfactor
 
     //Alarm Type
-    enum Alarm{
+    typedef enum{
         NONE = 1,
         ALARM = 2,
         ALARM_MUTE = 3
-    };
+    }Alarm_t;
 
+    typedef enum {
+        idle = 0,
+        btTempUp = 1,
+        btTempDown = 2,
+        btHumidUp = 3,
+        btHumidDown = 4,    
+        btTiltUpStart = 5,
+        btTiltStop = 6,
+        btTiltDown = 7,
+        btAlarmMute = 8
+    } Button_t;
+
+    typedef enum {
+        TILT_OFF = 0,
+        TILT_UP = 1,
+        TILT_DOWN = 2
+    }Tilt_t;
+
+    typedef struct {
+        float setTemp;
+        float setHumidity;
+        float roomTemp;
+        float roomHumidity;
+        float chamberHumidity;
+        float rtd_1;
+        float rtd_2;
+        float rtd_3;
+        float avrTemp;
+        Tilt_t  tilt;
+        Tilt_t nextTilt;
+        unsigned long tiltTimer;
+        unsigned long tiltInterval;
+        bool humidifier;
+        bool fan;
+    } Incubator_t;
 
 #endif

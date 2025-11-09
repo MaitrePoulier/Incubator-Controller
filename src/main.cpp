@@ -13,7 +13,12 @@ TaskHandle_t TaskPID;
 TaskHandle_t TaskBuzzer;
 // Queue handle for inter-core communication
 QueueHandle_t avrTempQueue;
-int AlarmCode;
+
+
+// C'est laid, mais je ne sais pas comment l'envoyer dans l'autre core sans ça
+// Ça sers au PID
+float avrTemp = 30;
+float setTemp = 37.5;
 
 //For the PID
 #include <PID_v2.h>
@@ -28,16 +33,6 @@ double output;
 
 #include <Adafruit_MAX31865.h>
 
-float setTemp = 37.7;
-float setHumidity = 50;
-int   Tilt = 0; //no tilt
-int   NextTilt = 1; //go up next time
-unsigned long   TiltTimer    =  120000; // The duration of the tile in ms: 2min
-unsigned long   TiltInterval = 7200000; //Interval before 2 tilt in ms: 2h
-
-
-bool Humidifier = false; //set if the humidifier is on or off
-bool Fan = false; //set if the Output Fan is on or off
 
 unsigned long currentMillis;
 unsigned long previousMillis = 0;
@@ -59,10 +54,7 @@ Adafruit_SHT31 sht31_chamber = Adafruit_SHT31();
 Adafruit_MAX31865 thermo1 = Adafruit_MAX31865(CS_1,39,3,4); //left  (top of the chamber - Red)
 Adafruit_MAX31865 thermo2 = Adafruit_MAX31865(CS_2,39,3,4); //middle (Middle of the chamber - Green)
 Adafruit_MAX31865 thermo3 = Adafruit_MAX31865(CS_3,39,3,4);  //right (Bot of the chamber - Blue)
-float rtd_1;
-float rtd_2;
-float rtd_3;
-float avrTemp = 30;
+
 
 //Variables for the touchscreen
 u_int16_t x,y;
@@ -70,8 +62,8 @@ bool pressed;
 int count;
 
 //2 variable to handle alarm type
-enum Alarm HumidityAlarm = ALARM;
-enum Alarm TemperatureAlarm = ALARM;
+Alarm_t  HumidityAlarm = NONE;
+Alarm_t TemperatureAlarm = NONE;
 
 // Function that implement the PID
 // We put it on core 0 to be able to control precisely the time it take to execute
@@ -101,7 +93,7 @@ void PIDCtrl(void *pvParameters) {
     #ifndef _StopRelay
       if (output > millis() - windowStartTime && output > MIN_PID_TIME_WIDTH + 0.01)
       {
-        digitalWrite(RELAY1,HIGH);
+        digitalWrite(relayHeat,HIGH);
 
         //tft.setTextColor(TFT_RED, TFT_BLACK);
         //tft.drawString("Heat On ", 390, 190,2);
@@ -109,7 +101,7 @@ void PIDCtrl(void *pvParameters) {
       }
       else
       {
-        digitalWrite(RELAY1,LOW);
+        digitalWrite(relayHeat,LOW);
         //tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
         //tft.drawString("Heat Off", 390, 190,2);
         //tft.setTextColor(TFT_WHITE, TFT_BLACK);
@@ -147,34 +139,12 @@ void Buzzer(void *pvParameters) {
 
     vTaskDelay(500);
   };
-  /*
-    if(AlarmCode == 12 || AlarmCode == 22 || AlarmCode == 32 )
-    {
-        ledcWrite(PWM_Channel, Dutyfactor);
-        vTaskDelay(100);
-        ledcWrite(PWM_Channel, 0);
-    };
-    
-    vTaskDelay(10);
-
-    if(AlarmCode == 21 || AlarmCode == 22 || AlarmCode == 23 )
-    {
-        ledcWrite(PWM_Channel, Dutyfactor);
-        vTaskDelay(100);
-        ledcWrite(PWM_Channel, 0);
-        vTaskDelay(100);
-        ledcWrite(PWM_Channel, Dutyfactor);
-        vTaskDelay(100);
-        ledcWrite(PWM_Channel, 0);
-    };
-
-    vTaskDelay(10);
-  };*/
 };
 
-void Read3PRT();
+void Read3PRT(Incubator_t *);
 
 void setup() {
+
   // Some boards work best if we also make a serial connection
   Serial.begin(460800);
 
@@ -187,11 +157,11 @@ void setup() {
   TempTable_Spr.fillSprite(TFT_BLACK);
 
   // set all relay IO to output
-  pinMode(RELAY1, OUTPUT);
-  pinMode(RELAY2, OUTPUT);
-  pinMode(RELAY3, OUTPUT);
-  pinMode(RELAY4, OUTPUT);
-  pinMode(RELAY5, OUTPUT);
+  pinMode(relayHeat, OUTPUT);
+  pinMode(relayHumidity, OUTPUT);
+  pinMode(relayFan, OUTPUT);
+  pinMode(relayTiltUp, OUTPUT);
+  pinMode(relayTiltDown, OUTPUT);
   pinMode(RELAY6, OUTPUT);
   pinMode(BUZZER, OUTPUT);
 
@@ -231,7 +201,7 @@ void setup() {
   // turn the PID on
   myPID.Start(thermo1.temperature(RNOMINAL_TOP, RREF),  // input
               0,                      // current output
-              setTemp);                   // setpoint
+              setTemp);     // setpoint
 
   // Create a queue capable of holding one float value
   avrTempQueue = xQueueCreate(1, sizeof(float));
@@ -256,7 +226,6 @@ void setup() {
     &TaskBuzzer,             // Task handle
     0);                 // Core to run the task (Core 0)
 
-  TiltInterval = TILT_INTERVAL + millis(); //2h waiting time at start
 
   //For the ESP32 PWM channel
   ledcSetup(PWM_Channel, Frequency, Resolution);   // Set a LEDC channel
@@ -265,34 +234,56 @@ void setup() {
 
 
 void loop() {
+
+  //Define a structure to hold incubator parameters
+  //Static so it's only created once
+  static Incubator_t incubator = {
+      .setTemp = 37.7,
+      .setHumidity = 50.0,
+      .roomTemp = 22.0,
+      .roomHumidity = 40.0,
+      .chamberHumidity = 45.0,
+      .rtd_1 = 37.0,
+      .rtd_2 = 37.0,
+      .rtd_3 = 37.0,
+      .avrTemp = 37.0,
+      .tilt = TILT_OFF,
+      .nextTilt = TILT_UP,
+      .tiltTimer = 120000,      // The duration of the tile in ms: 2min
+      .tiltInterval = TILT_INTERVAL + millis(),  //Interval before 2 tilt in ms: 2h
+      .humidifier = false,  //set if the humidifier is on or off
+      .fan = false          //set if the Output Fan is on or off
+  };
+
+
   // Reading temperature or humidity takes about 250 milliseconds!
   // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
-  float room_h = sht31_room.readHumidity();
-  float chamber_h = sht31_chamber.readHumidity();
+  incubator.roomHumidity = sht31_room.readHumidity();
+  incubator.chamberHumidity = sht31_chamber.readHumidity();
   // Read temperature as Celsius (the default)
-  float room_t = sht31_room.readTemperature();
+  incubator.roomTemp = sht31_room.readTemperature();
   // Check if any reads failed and exit early (to try again).
-  if (isnan(room_h) || isnan(room_t)) {
+  if (isnan(incubator.roomHumidity) || isnan(incubator.roomTemp)) {
     Serial.println(F("Failed to read from DHT room sensor!"));
     return;
   }
-  if (isnan(chamber_h)) {
+  if (isnan(incubator.chamberHumidity)) {
     Serial.println(F("Failed to read from DHT chamber sensor!"));
     return;
   }
 
   // We read the 3 RTD
   // change the value of rtd_1, rtd_2, rtd_3 and avrTemp
-  Read3PRT();
+  Read3PRT(&incubator);
 
   // We send the value to the serial for logging purpose
-  SentSerial(room_h, chamber_h, room_t, avrTemp);
+  SentSerial(&incubator);
 
   // Send the average temperature of the 3 RTD to the PID task
   // The xQueueSend wait after the PID to remove the value from the Queue
-  xQueueSend(avrTempQueue, &avrTemp, portMAX_DELAY);
+  xQueueSend(avrTempQueue, &incubator.avrTemp, portMAX_DELAY);
 
-  Draw_data(setTemp, setHumidity, room_t, room_h, int((TiltInterval - millis())/1000/60), 150, chamber_h, rtd_1, rtd_2, rtd_3);
+  Draw_data(&incubator);
   
 
   // for now we update the plot only every 10 cycles or 10 x 140ms = 1.4s
@@ -302,7 +293,7 @@ void loop() {
   {
     count = 0;
     //plot the tableau
-    Add_Value_Table(TempTable,rtd_1, rtd_2, rtd_3);
+    Add_Value_Table(TempTable,incubator.rtd_1, incubator.rtd_2, incubator.rtd_3);
     Draw_Table(TempTable);
     //We only save 20ms with the sprite method over writing directly on the screen... 
     //But it's better than nothing!!
@@ -311,55 +302,56 @@ void loop() {
   
 
   //Humidity
-  if (chamber_h <= setHumidity -5 )
+  if (incubator.chamberHumidity <= incubator.setHumidity -5 )
   {
-    Humidifier = true;
-    digitalWrite(RELAY2,HIGH);
+    incubator.humidifier = true;
+    digitalWrite(relayHumidity,HIGH);
   }
-  if (chamber_h > setHumidity)
+  //we create a small hysteresis to avoid relay oscillation
+  else if (incubator.chamberHumidity > incubator.setHumidity )
   {
-    Humidifier = false;
-    digitalWrite(RELAY2,LOW);
+    incubator.humidifier = false;
+    digitalWrite(relayHumidity,LOW);
   }
 
   //OverTemp
-  if (avrTemp >= setTemp + 0.2)
+  if (incubator.avrTemp >= incubator.setTemp + 0.2)
   {
-    Fan = true;
-    digitalWrite(RELAY3,HIGH);
+    incubator.fan = true;
+    digitalWrite(relayFan,HIGH);
   }
   else
   {
-    Fan = false;
-    digitalWrite(RELAY3,LOW);
+    incubator.fan = false;
+    digitalWrite(relayFan,LOW);
   }
   
   //Tilt
-  if (TiltInterval < millis())
+  if (incubator.tiltInterval < millis())
   {
-    TiltInterval = TILT_INTERVAL + millis(); //we add a new 2h
-    Tilt = NextTilt; //we start the tilting process
-    TiltTimer = millis() + TILT_DURATION; //2min tilting time
-    if (Tilt == 1) NextTilt = 2; //We planne the next Tilt
-    if (Tilt == 2) NextTilt = 1;
+    incubator.tiltInterval = TILT_INTERVAL + millis(); //we add a new 2h
+    incubator.tilt = incubator.nextTilt; //we start the tilting process
+    incubator.tiltTimer = millis() + TILT_DURATION; //2min tilting time
+    if (incubator.tilt == TILT_UP) incubator.nextTilt = TILT_DOWN; //We planne the next Tilt
+    if (incubator.tilt == TILT_DOWN) incubator.nextTilt = TILT_UP;
   }
-  if (TiltTimer < millis()) Tilt = 0;
+  if (incubator.tiltTimer < millis()) incubator.tilt = TILT_OFF;
 
-  switch (Tilt)
+  switch (incubator.tilt)
   {
-  case 1: //Tilt up
-    digitalWrite(RELAY5,LOW);   //down relay
-    digitalWrite(RELAY4,HIGH);  //up relay
+  case TILT_UP: 
+    digitalWrite(relayTiltDown,LOW);   //down relay
+    digitalWrite(relayTiltUp,HIGH);  //up relay
     break;
 
-  case 2: //Tilt Down 
-    digitalWrite(RELAY4,LOW);   //up relay
-    digitalWrite(RELAY5,HIGH);  //down relay
+  case TILT_DOWN: 
+    digitalWrite(relayTiltUp,LOW);   //up relay
+    digitalWrite(relayTiltDown,HIGH);  //down relay
     break;
 
-  case 0: //no Tilt
-    digitalWrite(RELAY4,LOW);   //up relay
-    digitalWrite(RELAY5,LOW);   //down relay
+  case TILT_OFF: 
+    digitalWrite(relayTiltUp,LOW);   //up relay
+    digitalWrite(relayTiltDown,LOW);   //down relay
     break;
   }
   
@@ -369,32 +361,34 @@ void loop() {
   //We check if somebody have touch the button 
   pressed = tft.getTouch(&x,&y,MINPRESSURE);
   switch (MainScreenButton(pressed,x,y)) {
-    case 1:
-      setTemp = setTemp + 0.1;
+    case idle:
+      break;
+    case btTempUp:
+      incubator.setTemp += 0.1;
       myPID.Setpoint(setTemp);
       break;
-    case 2:
-      setTemp = setTemp - 0.1;
-      myPID.Setpoint(setTemp);
+    case btTempDown:
+      incubator.setTemp -= 0.1;
+      myPID.Setpoint(incubator.setTemp);
       break;
-    case 3:
-      setHumidity = setHumidity + 1;
+    case btHumidUp:
+      incubator.setHumidity += 1;
       break;
-    case 4:
-      setHumidity = setHumidity - 1;
+    case btHumidDown:
+      incubator.setHumidity -= 1;
       break;
-    case 5:
-      Tilt = 1; //up
-      TiltInterval = TILT_INTERVAL + millis(); //we add a new 2h
+    case btTiltUpStart:
+      incubator.tilt = TILT_UP; //up
+      incubator.tiltInterval = TILT_INTERVAL + millis(); //we add a new 2h
       break;   
-    case 6:
-      Tilt = 0; //Stop
+    case btTiltStop:
+      incubator.tilt = TILT_OFF; //Stop
       break;   
-    case 7:
-      Tilt = 2; //down
-      TiltInterval = TILT_INTERVAL + millis(); //we add a new 2h
+    case btTiltDown:
+      incubator.tilt = TILT_DOWN; //down
+      incubator.tiltInterval = TILT_INTERVAL + millis(); //we add a new 2h
       break;  
-    case 8: //Mute alarm if on
+    case btAlarmMute: //Mute alarm if on
       if(HumidityAlarm == ALARM) HumidityAlarm = ALARM_MUTE;
       if(TemperatureAlarm == ALARM) TemperatureAlarm = ALARM_MUTE;
       break;  
@@ -406,9 +400,9 @@ void loop() {
 
 
   Display_Heater(output); //Display heater on/off
-  Display_Humidifier(Humidifier);
-  Display_Fan(Fan);
-  Display_Tilt(Tilt);
+  Display_Humidifier(incubator.humidifier);
+  Display_Fan(incubator.fan);
+  Display_Tilt(incubator.tilt);
 
   currentMillis = millis();
   Display_UpTime(currentMillis);
@@ -419,7 +413,7 @@ void loop() {
   displayAlarm(HumidityAlarm, TemperatureAlarm);
 }
 
-void Read3PRT()
+void Read3PRT(Incubator_t *incubator)
 {
   // We read the 3 RTD
   // Clear fault x3
@@ -435,9 +429,14 @@ void Read3PRT()
   vTaskDelay(50);
 
   // read data x3 and convert to temperature
-  rtd_1 = thermo1.calculateTemperature(thermo1.readData(), RNOMINAL_TOP, RREF);
-  rtd_2 = thermo2.calculateTemperature(thermo2.readData(), RNOMINAL_MID, RREF);
-  rtd_3 = thermo3.calculateTemperature(thermo3.readData(), RNOMINAL_BOT, RREF);
+  incubator->rtd_1 = thermo1.calculateTemperature(thermo1.readData(), RNOMINAL_TOP, RREF);
+  incubator->rtd_2 = thermo2.calculateTemperature(thermo2.readData(), RNOMINAL_MID, RREF);
+  incubator->rtd_3 = thermo3.calculateTemperature(thermo3.readData(), RNOMINAL_BOT, RREF);
 
-  avrTemp = (rtd_1 + rtd_2 + rtd_3) / 3;
+  incubator->avrTemp = (incubator->rtd_1 + incubator->rtd_2 + incubator->rtd_3) / 3;
+  
+  //Très laid, mais je ne sais pas comment faire autrement pour l'instant
+  //Sers au PID
+  avrTemp = incubator->avrTemp;
+  setTemp = incubator->setTemp;
 }

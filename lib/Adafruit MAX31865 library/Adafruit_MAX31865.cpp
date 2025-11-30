@@ -20,7 +20,7 @@
 
 
 
-#include "Adafruit_MAX31865.h"
+#include "Adafruit_MAX31865.h" 
 #ifdef __AVR
 #include <avr/pgmspace.h>
 #elif defined(ESP8266)
@@ -319,7 +319,7 @@ uint16_t Adafruit_MAX31865::readRTD(void) {
   return rtd;
 }
 
-
+//************************************************** */
 //3 functions below are modifications by YV to make the reading non blocking
 void Adafruit_MAX31865::ClearFault(void){
   clearFault();

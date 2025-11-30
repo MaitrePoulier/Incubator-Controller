@@ -6,6 +6,13 @@ extern TFT_eSprite TempTable_Spr;
 void Draw_screen_background()
 {
   tft.init();
+
+  // Initialize DMA
+  // I didn't see performance improvement with DMA on ESP32-S3
+  bool status;
+  status = tft.initDMA();
+  Serial.println("Status DMA init: " + String(status));
+
   tft.setRotation(1);
   tft.fillScreen(TFT_BLACK);
 
@@ -137,13 +144,12 @@ void Add_Value_Table(uint16_t TempTable[][TABLE_HEIGHT],float tempHigh, float te
 
 }
 
-void Display_UpTime(unsigned long currentMillis)
+void Display_UpTime(unsigned long currentseconds)
 {
-    unsigned long totalSeconds = currentMillis / 1000;
-    unsigned long days = totalSeconds / 86400; // Seconds in a day
-    unsigned long hours = totalSeconds / 3600;
-    unsigned long minutes = ((totalSeconds /60)%60); 
-    unsigned long seconds = totalSeconds % 60; 
+    unsigned long days = currentseconds / 86400; // Seconds in a day
+    unsigned long hours = currentseconds / 3600;
+    unsigned long minutes = ((currentseconds /60)%60); 
+    unsigned long seconds = currentseconds % 60; 
 
     tft.setTextSize(1);
     tft.setTextFont(1);
@@ -269,22 +275,22 @@ void Display_Fan(bool Fan)
     }
 }
 
-void Display_Tilt(int Tilt)
+void Display_Tilt(Tilt_t Tilt)
 {
     tft.setTextDatum(TL_DATUM);
     switch(Tilt)
     {
-        case 0:
+        case TILT_OFF:
             tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
             tft.drawString("Tilt Off  ", 405, 220,2);
             tft.setTextColor(TFT_WHITE, TFT_BLACK);
             break;
-        case 1:
+        case TILT_UP:
             tft.setTextColor(TFT_RED, TFT_BLACK);
             tft.drawString("Tilt Up   ", 405, 220,2);
             tft.setTextColor(TFT_WHITE, TFT_BLACK);
             break;
-        case 2:
+        case TILT_DOWN:
             tft.setTextColor(TFT_RED, TFT_BLACK);
             tft.drawString("Tilt Down", 405, 220,2);
             tft.setTextColor(TFT_WHITE, TFT_BLACK);

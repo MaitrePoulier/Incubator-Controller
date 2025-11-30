@@ -205,8 +205,11 @@ bool Adafruit_SHT31::readTempHum(void) {
 
   if (!writeCommand(SHT31_MEAS_HIGHREP))
     return false;
-
-  delay(20);
+  
+  //J'ai enlevé le délais de 20ms pour accélérer la lecture
+  //On lit donc probablement des données un peu plus vieilles
+  //dans notre application, ce n'est pas très grave
+  //delay(20);
 
   if (!i2c_dev->read(readbuffer, sizeof(readbuffer)))
     return false;

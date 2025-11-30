@@ -16,6 +16,6 @@
   void Display_Heater(float);
   void Display_Humidifier(bool);
   void Display_Fan(bool);
-  void Display_Tilt(int);
+  void Display_Tilt(Tilt_t);
 
 #endif

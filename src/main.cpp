@@ -7,6 +7,7 @@
 #include <Button.h> //Pour l'écran de boutons
 #include <Wire.h>
 #include "Adafruit_SHT31.h"
+#include <ESP32Time.h>
 
 // Task handles
 TaskHandle_t TaskPID;
@@ -33,12 +34,16 @@ double output;
 
 #include <Adafruit_MAX31865.h>
 
-
+//For the refresh rate
 unsigned long currentMillis;
 unsigned long previousMillis = 0;
 
+//Initiate the RTC for the uptime display
+ESP32Time rtc;
+
 //Screen pinout define in /pio/libdeps/adafruit.../TFT_eSPI/User_Setup_Select.h
 //  then: <User_Setups/TFT_User_Setup_ILI9486.h>
+#include <../TFT_eSPI_Setup/User_Setup_Select.h>
 TFT_eSPI tft = TFT_eSPI();       // Invoke custom library
 uint16_t TempTable[TABLE_WIDTH][TABLE_HEIGHT];
 TFT_eSprite TempTable_Spr = TFT_eSprite(&tft); // Declare Sprite object "spr" with pointer to "tft" object
@@ -148,6 +153,9 @@ void setup() {
   // Some boards work best if we also make a serial connection
   Serial.begin(460800);
 
+  // 1st Jan 2021 00:00:00
+  rtc.setTime(1609459200);  
+
   Draw_screen_background();
   
   Init_Table(TempTable);
@@ -237,6 +245,7 @@ void loop() {
 
   //Define a structure to hold incubator parameters
   //Static so it's only created once
+  //I try to limit the memory fragmentation by putting everything global.
   static Incubator_t incubator = {
       .setTemp = 37.7,
       .setHumidity = 50.0,
@@ -256,7 +265,7 @@ void loop() {
   };
 
 
-  // Reading temperature or humidity takes about 250 milliseconds!
+  // Reading temperature or humidity takes about 50 milliseconds!
   // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
   incubator.roomHumidity = sht31_room.readHumidity();
   incubator.chamberHumidity = sht31_chamber.readHumidity();
@@ -285,11 +294,12 @@ void loop() {
 
   Draw_data(&incubator);
   
-
-  // for now we update the plot only every 10 cycles or 10 x 140ms = 1.4s
+  /******************** Update the temperature plot **************** */
+  //
+  // for now we update the plot only every 30 cycles or 30 x 30ms = 900ms
   // later on we will want to update it every minutes
   count ++;
-  if (count > 9) 
+  if (count > 30) 
   {
     count = 0;
     //plot the tableau
@@ -300,8 +310,8 @@ void loop() {
     TempTable_Spr.pushSprite(1,1); //We offset to clear the whiteborder
   }
   
-
-  //Humidity
+  /******************** Humidity **************** */
+  //
   if (incubator.chamberHumidity <= incubator.setHumidity -5 )
   {
     incubator.humidifier = true;
@@ -314,7 +324,8 @@ void loop() {
     digitalWrite(relayHumidity,LOW);
   }
 
-  //OverTemp
+  /******************** OverTemp **************** */
+  //
   if (incubator.avrTemp >= incubator.setTemp + 0.2)
   {
     incubator.fan = true;
@@ -325,8 +336,8 @@ void loop() {
     incubator.fan = false;
     digitalWrite(relayFan,LOW);
   }
-  
-  //Tilt
+
+  /******************** Tilt **************** */
   if (incubator.tiltInterval < millis())
   {
     incubator.tiltInterval = TILT_INTERVAL + millis(); //we add a new 2h
@@ -355,8 +366,6 @@ void loop() {
     break;
   }
   
-  //Ventilation
-
   
   //We check if somebody have touch the button 
   pressed = tft.getTouch(&x,&y,MINPRESSURE);
@@ -404,8 +413,10 @@ void loop() {
   Display_Fan(incubator.fan);
   Display_Tilt(incubator.tilt);
 
+  //We remove the offset to have the uptime since the 1st Jan 2021
+  Display_UpTime(rtc.getEpoch()-1609459200); 
+
   currentMillis = millis();
-  Display_UpTime(currentMillis);
   Display_Refresh(currentMillis-previousMillis);
   previousMillis = currentMillis;
   Serial.println("");
@@ -415,19 +426,6 @@ void loop() {
 
 void Read3PRT(Incubator_t *incubator)
 {
-  // We read the 3 RTD
-  // Clear fault x3
-  thermo1.ClearFault();
-  thermo2.ClearFault();
-  thermo3.ClearFault();
-  vTaskDelay(5);
-
-  // ask for data x3
-  thermo1.askData();
-  thermo2.askData();
-  thermo3.askData();
-  vTaskDelay(50);
-
   // read data x3 and convert to temperature
   incubator->rtd_1 = thermo1.calculateTemperature(thermo1.readData(), RNOMINAL_TOP, RREF);
   incubator->rtd_2 = thermo2.calculateTemperature(thermo2.readData(), RNOMINAL_MID, RREF);
@@ -439,4 +437,16 @@ void Read3PRT(Incubator_t *incubator)
   //Sers au PID
   avrTemp = incubator->avrTemp;
   setTemp = incubator->setTemp;
+
+  // We start the reading of the 3 RTD
+  // It take at least 50ms to be ready.
+  // Clear fault x3
+  thermo1.ClearFault();
+  thermo2.ClearFault();
+  thermo3.ClearFault();
+
+  // ask for data x3
+  thermo1.askData();
+  thermo2.askData();
+  thermo3.askData();
 }

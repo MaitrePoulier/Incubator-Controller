@@ -165,7 +165,7 @@ void Display_UpTime(unsigned long currentseconds)
     tft.drawNumber(minutes,143,300);
     tft.drawNumber(seconds,167,300);
 
-
+    /*
     Serial.print("Days: ");
     Serial.print(days);
     Serial.print(", Hours: ");
@@ -173,7 +173,7 @@ void Display_UpTime(unsigned long currentseconds)
     Serial.print(", Minutes: ");
     Serial.print(minutes);
     Serial.print(", Seconds: ");
-    Serial.println(seconds);
+    Serial.println(seconds);*/
 }
 
 
@@ -184,8 +184,8 @@ void Display_Refresh(unsigned long RefreshTime)
     tft.setTextPadding(6*2);
     tft.setTextDatum(BL_DATUM);
 
-    Serial.print(RefreshTime);
-    Serial.println("ms");
+    //Serial.print(RefreshTime);
+    //Serial.println("ms");
     tft.drawString("    ms", 95, 310); 
     tft.drawNumber(RefreshTime,95,310);
     

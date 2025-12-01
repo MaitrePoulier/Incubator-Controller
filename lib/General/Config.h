@@ -3,11 +3,18 @@
 
     //For the plot
     #define RESOLUTION 0.03125 //it's the granularity of the RTD decoder
-    #define MIN_VALUE 21 // 37.7 - 160 * 0.03125  /2 in oC
+    #define MIN_VALUE 21 // 21oC for debugging, 32.8 for normal operation: 37.8 - 160 * 0.03125  /2 in oC
     #define TABLE_HEIGHT  160
     #define TABLE_WIDTH 390
     #define TILT_DURATION  120000 //2min in ms
     #define TILT_INTERVAL 7200000 //2H in ms
+
+    //Alarm threahold in oC
+    #define TEMP_ALARM_THRESHOLD 0.4
+    #define HUMID_ALARM_THRESHOLD 10
+
+    //Exaustfan Threashold in oC
+    #define EXAUST_FAN_THRESHOLD 0.2
 
     #define MIN_PID_TIME_WIDTH 25 //in ms
     //For the touchscreen
@@ -29,17 +36,17 @@
 
     // The value of the Rref resistor. Use 430.0 for PT100 and 4300.0 for PT1000
     #define RREF      4300.0
+
     // The 'nominal' 0-degrees-C resistance of the sensor
     // 100.0 for PT100, 1000.0 for PT1000
     // Calibrated for my 3 specific PRT in Iced water
     //   Start by changer those value to 1000.0, then print the resistance readed at 0oC then put it there
-    
     #define RNOMINAL_TOP  1000.72631836
     #define RNOMINAL_MID  1000.72631836
     #define RNOMINAL_BOT  1000.07019043
 
     //Uncomment of debugging purpose
-    #define _StopRelay
+    //#define _StopRelay
 
     /***********************************************************  Buzzer  ***********************************************************/
     #define PWM_Channel     1       // PWM Channel   

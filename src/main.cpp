@@ -66,7 +66,7 @@ u_int16_t x,y;
 bool pressed;
 int count;
 
-//2 variable to handle alarm type
+//2 global variable to handle alarms
 Alarm_t  HumidityAlarm = NONE;
 Alarm_t TemperatureAlarm = NONE;
 
@@ -149,7 +149,6 @@ void Buzzer(void *pvParameters) {
 void Read3PRT(Incubator_t *);
 
 void setup() {
-
   // Some boards work best if we also make a serial connection
   Serial.begin(460800);
 
@@ -238,6 +237,8 @@ void setup() {
   //For the ESP32 PWM channel
   ledcSetup(PWM_Channel, Frequency, Resolution);   // Set a LEDC channel
   ledcAttachPin(BUZZER, PWM_Channel);              // Connect the channel to the corresponding pin
+  
+  Serial.println("Initialisation completed!");
 }
 
 
@@ -285,9 +286,6 @@ void loop() {
   // change the value of rtd_1, rtd_2, rtd_3 and avrTemp
   Read3PRT(&incubator);
 
-  // We send the value to the serial for logging purpose
-  SentSerial(&incubator);
-
   // Send the average temperature of the 3 RTD to the PID task
   // The xQueueSend wait after the PID to remove the value from the Queue
   xQueueSend(avrTempQueue, &incubator.avrTemp, portMAX_DELAY);
@@ -311,6 +309,7 @@ void loop() {
   }
   
   /******************** Humidity **************** */
+  // No fancy PID here
   //
   if (incubator.chamberHumidity <= incubator.setHumidity -5 )
   {
@@ -324,9 +323,12 @@ void loop() {
     digitalWrite(relayHumidity,LOW);
   }
 
-  /******************** OverTemp **************** */
-  //
-  if (incubator.avrTemp >= incubator.setTemp + 0.2)
+  CheckHumidityAlarm(&incubator, &HumidityAlarm);
+
+  /******************** Temperature and exaust fan **************** */
+  // Temperature is controlled in a the PID task, not here
+
+  if (incubator.avrTemp >= incubator.setTemp + EXAUST_FAN_THRESHOLD)
   {
     incubator.fan = true;
     digitalWrite(relayFan,HIGH);
@@ -336,6 +338,10 @@ void loop() {
     incubator.fan = false;
     digitalWrite(relayFan,LOW);
   }
+
+  CheckTemperatureAlarm(&incubator, &TemperatureAlarm);
+
+
 
   /******************** Tilt **************** */
   if (incubator.tiltInterval < millis())
@@ -406,7 +412,7 @@ void loop() {
       break;    
   }
 
-
+  //***************   Update display   *************** */
 
   Display_Heater(output); //Display heater on/off
   Display_Humidifier(incubator.humidifier);
@@ -416,11 +422,15 @@ void loop() {
   //We remove the offset to have the uptime since the 1st Jan 2021
   Display_UpTime(rtc.getEpoch()-1609459200); 
 
+
   currentMillis = millis();
   Display_Refresh(currentMillis-previousMillis);
   previousMillis = currentMillis;
-  Serial.println("");
   
+  // We send the value to the serial for logging purpose
+  //SentSerial(&incubator);
+  //Serial.println("");
+
   displayAlarm(HumidityAlarm, TemperatureAlarm);
 }
 
